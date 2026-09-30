@@ -32,9 +32,9 @@ export default function BlogPage() {
 
   return (
     <div className="bg-black text-white min-h-screen pt-24 sm:pt-32 md:pt-36 pb-16 overflow-hidden relative">
-      
+
       {/* Background Dot Grid (matching Home Hero) */}
-      <div 
+      <div
         className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
@@ -51,7 +51,7 @@ export default function BlogPage() {
 
       {/* ==================== 1. HERO & SEARCH HEADER ==================== */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 sm:mb-20 md:mb-24 text-center">
-        
+
         {/* Top Suprema Shield Graphic with Float & Blur Entrance */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)', y: -15 }}
@@ -61,9 +61,9 @@ export default function BlogPage() {
         >
           {/* Background Ambient Spotlight behind Shield */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 sm:w-48 h-36 sm:h-48 bg-white/15 rounded-full blur-2xl pointer-events-none" />
-          
+
           {/* Dot Grid around Shield */}
-          <div 
+          <div
             className="absolute -inset-6 sm:-inset-10 opacity-20 pointer-events-none"
             style={{
               backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
@@ -74,7 +74,7 @@ export default function BlogPage() {
           />
 
           {/* Center Suprema Moon Inside Shield with floating animation */}
-          <motion.div 
+          <motion.div
             animate={{ y: [0, -4, 0] }}
             transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
@@ -99,7 +99,7 @@ export default function BlogPage() {
         <div className="relative max-w-4xl mx-auto mb-4 sm:mb-6 px-2">
           {/* Subtle Ambient Glow behind Title */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] sm:max-w-[480px] h-[70px] sm:h-[100px] bg-white/[0.08] rounded-full blur-3xl pointer-events-none" />
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -155,11 +155,10 @@ export default function BlogPage() {
                 whileHover={{ scale: 1.05, y: -1 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex-shrink-0 backdrop-blur-md ${
-                  selectedCategory === cat
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex-shrink-0 backdrop-blur-md ${selectedCategory === cat
                     ? 'bg-white text-black shadow-md'
                     : 'bg-zinc-900/80 border border-white/10 text-zinc-400 hover:text-white hover:border-white/25'
-                }`}
+                  }`}
               >
                 {cat}
               </motion.button>
@@ -172,12 +171,12 @@ export default function BlogPage() {
       {/* ==================== 2. FEATURED BLOGS SECTION ==================== */}
       {selectedCategory === 'All' && !searchQuery && (
         <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 sm:mb-20 md:mb-24">
-          
+
           {/* Horizontal Ambient Light Beam (matching Home Section Dividers) */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
           {/* Centered Divider with Text */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, filter: 'blur(6px)' }}
             whileInView={{ opacity: 1, filter: 'blur(0px)' }}
             viewport={{ once: true, margin: '-40px' }}
@@ -209,9 +208,9 @@ export default function BlogPage() {
                   <div className="h-44 sm:h-48 md:h-48 lg:h-56 bg-gradient-to-b from-[#181920] via-[#0d0d12] to-[#070709] rounded-xl sm:rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center p-4 sm:p-6 mb-4 sm:mb-5 group-hover:border-white/25 transition-all shadow-inner flex-shrink-0">
                     {/* Top Spotlight Beam */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 bg-gradient-to-b from-white/20 via-white/5 to-transparent blur-xl pointer-events-none" />
-                    
+
                     {/* Subtle Dot Pattern */}
-                    <div 
+                    <div
                       className="absolute inset-0 opacity-15 pointer-events-none"
                       style={{
                         backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
@@ -264,10 +263,10 @@ export default function BlogPage() {
 
       {/* ==================== 3. ALL BLOGS COLLECTION (HORIZONTAL CARDS) ==================== */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-20 sm:mb-24 md:mb-32">
-        
+
         {/* Section Header with Blur Entrance */}
         <div className="mb-8 sm:mb-12 text-center">
-          
+
           {/* Top Pill Tag */}
           <motion.div
             initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
@@ -292,7 +291,7 @@ export default function BlogPage() {
           </motion.h2>
 
           {(selectedCategory !== 'All' || searchQuery) && (
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               className="text-xs sm:text-sm text-zinc-400 mt-2"
@@ -303,7 +302,7 @@ export default function BlogPage() {
         </div>
 
         {filteredPosts.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95, filter: 'blur(6px)' }}
             animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             className="text-center py-16 sm:py-20 bg-zinc-950/60 border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-xl"
@@ -344,9 +343,9 @@ export default function BlogPage() {
                   <div className="w-full md:w-[300px] lg:w-[360px] h-44 sm:h-48 md:h-auto min-h-[160px] md:min-h-[190px] bg-gradient-to-b from-[#181920] via-[#0d0d12] to-[#070709] rounded-xl sm:rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center p-4 sm:p-6 flex-shrink-0 group-hover:border-white/25 transition-all shadow-inner">
                     {/* Top Spotlight Beam */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 bg-gradient-to-b from-white/20 via-white/5 to-transparent blur-xl pointer-events-none" />
-                    
+
                     {/* Subtle Dot Grid Pattern */}
-                    <div 
+                    <div
                       className="absolute inset-0 opacity-15 pointer-events-none"
                       style={{
                         backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
@@ -426,13 +425,13 @@ export default function BlogPage() {
 
       {/* ==================== 4. OUR AUTHORS SECTION ==================== */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20 sm:mb-24 md:mb-32 pt-6">
-        
+
         {/* Horizontal Light Beam at top of section */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
         {/* Section Header with Blur Entrance */}
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 md:mb-16">
-          
+
           {/* Top Pill Tag */}
           <motion.div
             initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
