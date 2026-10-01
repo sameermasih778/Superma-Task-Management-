@@ -27,4 +27,6 @@ FullStack_SRS_Suprema.docx
 .env
 .env.*
 *.env
+!.env.example
+
 
