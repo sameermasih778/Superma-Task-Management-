@@ -25,6 +25,9 @@ app.use(cors({
 // Global Rate Limiting
 app.use('/api/', apiLimiter);
 
+// Static Uploads Serving
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Parsing Middlewares
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
