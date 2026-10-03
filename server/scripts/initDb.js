@@ -24,9 +24,10 @@ async function initializeDatabase() {
     connection = await mysql.createConnection(dbConfig);
     console.log(`🔌 Connected to MySQL server at ${dbConfig.host}:${dbConfig.port}`);
 
-    // 2. Create Database if not exists
-    console.log(`📦 Ensuring database '${dbName}' exists...`);
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    // 2. Drop and Create Database
+    console.log(`📦 Recreating database '${dbName}'...`);
+    await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+    await connection.query(`CREATE DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
     await connection.query(`USE \`${dbName}\`;`);
     console.log(`✅ Database '${dbName}' is ready.`);
 

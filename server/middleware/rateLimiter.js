@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 // Global API Rate Limiter
 const apiLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10), // 100 requests per IP
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '500', 10), // 500 requests per IP (dev-friendly)
   standardHeaders: true,
   legacyHeaders: false,
   message: {
