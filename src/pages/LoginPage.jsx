@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Lock, Mail, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldAlert, Sparkles, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +12,10 @@ export default function LoginPage() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Secret internal portal check
+  const isInternalPortal = location.pathname.includes('/admin-login') || location.pathname.includes('/staff-portal');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,10 +53,14 @@ export default function LoginPage() {
       >
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center mx-auto mb-4 text-white">
-            <Lock className="w-6 h-6" />
+            {isInternalPortal ? <ShieldCheck className="w-6 h-6 text-indigo-400" /> : <Lock className="w-6 h-6" />}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Welcome Back</h1>
-          <p className="text-sm text-zinc-400">Sign in to your Suprema SaaS workspace</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
+            {isInternalPortal ? 'Staff & Admin Portal' : 'Welcome Back'}
+          </h1>
+          <p className="text-sm text-zinc-400">
+            {isInternalPortal ? 'Authorized Suprema Team & Developer Access' : 'Sign in to your Suprema SaaS workspace'}
+          </p>
         </div>
 
         {error && (
@@ -72,7 +80,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@suprema.io"
+                placeholder="user@suprema.io"
                 className="w-full bg-zinc-900/80 border border-white/10 rounded-xl px-10 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-all"
               />
             </div>
@@ -107,36 +115,31 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Quick Fill Buttons */}
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-            <span>Quick Fill Demo Accounts:</span>
+        {/* Demo Quick Fill Buttons - Only visible on internal staff / admin portal route */}
+        {isInternalPortal && (
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Internal Authorized Fill:</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDemoAccount('admin@suprema.io')}
+                className="px-2.5 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium text-center"
+              >
+                Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoAccount('developer@suprema.io')}
+                className="px-2.5 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium text-center"
+              >
+                Developer
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setDemoAccount('admin@suprema.io')}
-              className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-[11px] text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
-            >
-              Super Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoAccount('developer@suprema.io')}
-              className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-[11px] text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
-            >
-              Developer
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoAccount('client@suprema.io')}
-              className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-[11px] text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
-            >
-              Client
-            </button>
-          </div>
-        </div>
+        )}
 
         <p className="text-center text-xs text-zinc-500 mt-6">
           Don't have an account?{' '}

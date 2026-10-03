@@ -46,6 +46,8 @@ function MainLayout() {
           {/* Public Pages */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin-login" element={<LoginPage />} />
+          <Route path="/staff-portal" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/blogs" element={<BlogPage />} />
           <Route path="/blog" element={<BlogPage />} />
