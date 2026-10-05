@@ -10,7 +10,7 @@ import {
   LogOut,
   ChevronDown,
   Building2,
-  Plus,
+  Globe,
   Shield
 } from 'lucide-react';
 
@@ -19,9 +19,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const navigate = useNavigate();
 
+  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+
   const handleLogout = () => {
+    const lastType = localStorage.getItem('suprema_last_login_type');
     logout();
-    navigate('/login');
+    if (lastType === 'admin') {
+      navigate('/admin-login');
+    } else {
+      navigate('/login');
+    }
   };
 
   const navItems = [
@@ -119,6 +126,20 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               </NavLink>
             );
           })}
+
+          {/* EXCLUSIVE FOR ADMIN & DEVELOPER LOGIN: Public Link Button */}
+          {isStaffOrAdmin && (
+            <div className="pt-2 mt-2 border-t border-white/10">
+              <NavLink
+                to="/"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-indigo-400 hover:text-white hover:bg-indigo-500/10 transition-all border border-indigo-500/20"
+              >
+                <Globe className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+                <span>Public Link</span>
+              </NavLink>
+            </div>
+          )}
         </nav>
       </div>
 

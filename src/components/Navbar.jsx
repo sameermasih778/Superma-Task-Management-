@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, logout, user } = useAuth();
+
   const [activeTab, setActiveTab] = useState('Home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isDashboardRoute = location.pathname.startsWith('/dashboard');
 
   const navItems = [
     { name: 'Home', href: '/', isRoute: true },
@@ -15,6 +21,17 @@ export default function Navbar() {
     { name: 'Changelog', href: '/changelog', isRoute: true },
     { name: 'Waitlist', href: '/waitlist', isRoute: true },
   ];
+
+  const handleSignOut = () => {
+    const lastType = localStorage.getItem('suprema_last_login_type');
+    logout();
+    setMobileMenuOpen(false);
+    if (lastType === 'admin') {
+      navigate('/admin-login');
+    } else {
+      navigate('/login');
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-4 md:pt-6 px-3 sm:px-4 flex justify-center pointer-events-none">
@@ -76,24 +93,49 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right: Dashboard / Sign In & Contact Us */}
+          {/* Right: Auth Action Buttons */}
           <div className="flex items-center gap-2">
-            <Link to="/login" className="hidden md:block">
-              <button className="px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
-                Dashboard
-              </button>
-            </Link>
-            <Link to="/contact" className="hidden md:block">
-              <button className="px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap">
-                Contact us
-              </button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                {/* Show Dashboard button ONLY when outside dashboard */}
+                {!isDashboardRoute && (
+                  <Link to="/dashboard" className="hidden md:block">
+                    <button className="px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap flex items-center gap-2 shadow-sm">
+                      <LayoutDashboard className="w-4 h-4 text-indigo-400" />
+                      <span>Dashboard</span>
+                    </button>
+                  </Link>
+                )}
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={handleSignOut}
+                  className="hidden md:flex items-center gap-1.5 px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hidden md:block">
+                  <button className="px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
+                    Sign In
+                  </button>
+                </Link>
+                <Link to="/contact" className="hidden md:block">
+                  <button className="px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap">
+                    Contact us
+                  </button>
+                </Link>
+              </>
+            )}
 
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle Navigation Menu"
-              className="md:hidden p-2 rounded-xl bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white focus:outline-none"
+              className="md:hidden p-2 rounded-xl bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white focus:outline-none cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -112,41 +154,58 @@ export default function Navbar() {
             >
               <div className="flex flex-col gap-1 p-1 bg-zinc-950/90 rounded-xl border border-white/10">
                 {navItems.map((item) => (
-                  item.isRoute ? (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => {
-                        setActiveTab(item.name);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors flex items-center justify-between"
-                    >
-                      <span>{item.name}</span>
-                    </Link>
-                  ) : (
-                    <a
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => {
-                        setActiveTab(item.name);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors flex items-center justify-between"
-                    >
-                      <span>{item.name}</span>
-                    </a>
-                  )
-                ))}
-                {/* Contact Us inside mobile menu */}
-                <div className="pt-2 mt-1 border-t border-white/10">
                   <Link
-                    to="/contact"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center px-4 py-3 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all active:scale-95"
+                    key={item.name}
+                    to={item.href}
+                    onClick={() => {
+                      setActiveTab(item.name);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors flex items-center justify-between"
                   >
-                    Contact us
+                    <span>{item.name}</span>
                   </Link>
+                ))}
+
+                <div className="pt-2 mt-1 border-t border-white/10 space-y-2">
+                  {isAuthenticated ? (
+                    <>
+                      {!isDashboardRoute && (
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
+                        >
+                          <LayoutDashboard className="w-4 h-4 text-indigo-400" />
+                          <span>Dashboard</span>
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        to="/login"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/contact"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all active:scale-95"
+                      >
+                        Contact us
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -157,4 +216,3 @@ export default function Navbar() {
     </header>
   );
 }
-

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckSquare,
   Plus,
@@ -10,30 +10,43 @@ import {
   AlertCircle,
   MessageSquare,
   Paperclip,
-  CheckCircle2,
-  ChevronRight,
-  Sparkles
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
+  Sparkles,
+  Calendar
 } from 'lucide-react';
+import TaskDetailDrawer from '../components/dashboard/TaskDetailDrawer';
+import CreateTaskModal from '../components/dashboard/CreateTaskModal';
 
 export default function TasksPage() {
   const { user, activeWorkspace } = useAuth();
+
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Role permissions
+  // Filters State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+
+  // Drawer & Modal State
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+
+  // Dragging state
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+
+  // Permissions
   const isViewer = user?.role === 'viewer';
-  const canManageTasks = ['super_admin', 'admin', 'member'].includes(user?.role);
+  const canManage = ['super_admin', 'admin', 'member'].includes(user?.role);
 
-  // New Task Modal state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDesc, setNewTaskDesc] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState('medium');
-  const [creating, setCreating] = useState(false);
-
-  // Fetch Projects first
+  // Fetch Projects on Workspace Change
   useEffect(() => {
     const fetchProjects = async () => {
       if (!activeWorkspace?.id) return;
@@ -51,7 +64,7 @@ export default function TasksPage() {
     fetchProjects();
   }, [activeWorkspace?.id]);
 
-  // Fetch Tasks whenever selected project changes
+  // Fetch Tasks for Selected Project
   const fetchTasks = async () => {
     if (!selectedProjectId) return;
     setLoading(true);
@@ -69,7 +82,7 @@ export default function TasksPage() {
     fetchTasks();
   }, [selectedProjectId]);
 
-  // Update Task Status (Kanban Board Move)
+  // Status Change (Kanban Drop or Dropdown change)
   const handleStatusChange = async (taskId, newStatus) => {
     try {
       await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
@@ -79,153 +92,237 @@ export default function TasksPage() {
     }
   };
 
-  // Create Task Submission
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    if (!newTaskTitle || !selectedProjectId) return;
-    setCreating(true);
+  // Drag & Drop Handlers
+  const handleDragStart = (e, taskId) => {
+    setDraggedTaskId(taskId);
+    e.dataTransfer.setData('text/plain', taskId.toString());
+  };
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, targetStatus) => {
+    e.preventDefault();
+    if (!draggedTaskId) return;
+    handleStatusChange(draggedTaskId, targetStatus);
+    setDraggedTaskId(null);
+  };
+
+  // Delete Task
+  const handleDeleteTask = async (taskId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
     try {
-      await api.post('/tasks', {
-        project_id: parseInt(selectedProjectId, 10),
-        title: newTaskTitle,
-        description: newTaskDesc,
-        priority: newTaskPriority,
-        status: 'todo'
-      });
-      setNewTaskTitle('');
-      setNewTaskDesc('');
-      setShowCreateModal(false);
-      fetchTasks();
+      await api.delete(`/tasks/${taskId}`);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
-      console.error('Create task error:', err.message);
-    } finally {
-      setCreating(false);
+      console.error('Delete task error:', err.message);
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEdit = (task, e) => {
+    e.stopPropagation();
+    setTaskToEdit(task);
+    setIsModalOpen(true);
+  };
+
+  // Open Create Modal
+  const handleOpenCreate = () => {
+    setTaskToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  // Filter Tasks by Search & Priority
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    return matchesSearch && matchesPriority;
+  });
+
   const columns = [
-    { id: 'todo', title: 'To Do', color: 'bg-zinc-500' },
-    { id: 'in_progress', title: 'In Progress', color: 'bg-amber-500' },
-    { id: 'in_review', title: 'In Review', color: 'bg-sky-500' },
-    { id: 'done', title: 'Completed', color: 'bg-emerald-500' }
+    { id: 'todo', title: 'To Do', color: 'bg-zinc-500', border: 'border-zinc-500/30' },
+    { id: 'in_progress', title: 'In Progress', color: 'bg-amber-500', border: 'border-amber-500/30' },
+    { id: 'in_review', title: 'In Review', color: 'bg-sky-500', border: 'border-sky-500/30' },
+    { id: 'done', title: 'Completed', color: 'bg-emerald-500', border: 'border-emerald-500/30' }
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Bar: Header Title & Control Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-white" />
             Task Kanban Board
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Drag and drop tasks or switch status categories in real time.
+            Drag and drop task cards, click to view comments & attachments, or update statuses in real time.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Project Dropdown Selector */}
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                Project: {p.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          {/* Project Switcher */}
+          <div className="relative">
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="bg-zinc-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-white focus:outline-none focus:border-white/30 cursor-pointer"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Project: {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {canManageTasks ? (
+          {canManage ? (
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 hover:bg-zinc-200 transition-all cursor-pointer shadow-md"
+              onClick={handleOpenCreate}
+              className="bg-white text-black font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 hover:bg-zinc-200 transition-all cursor-pointer shadow-md"
             >
               <Plus className="w-4 h-4" />
               <span>Add Task</span>
             </button>
           ) : (
-            <span className="text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1">
-              Read-Only Client Mode
+            <span className="text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-xl">
+              Read-Only Mode
             </span>
           )}
         </div>
       </div>
 
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-950 border border-white/10 p-3 rounded-2xl">
+        {/* Search Input */}
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks by title or description..."
+            className="w-full bg-zinc-900/90 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+          />
+        </div>
+
+        {/* Priority Filter */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Filter className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="text-xs text-zinc-400 font-medium hidden sm:inline">Filter Priority:</span>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
+          >
+            <option value="all">All Priorities</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+
       {/* Kanban Board Columns Grid */}
       {loading ? (
-        <div className="p-12 text-center text-xs text-zinc-500 bg-zinc-950 border border-white/10 rounded-2xl">
-          Loading task board from database...
+        <div className="p-16 text-center text-xs text-zinc-500 bg-zinc-950 border border-white/10 rounded-2xl">
+          Loading project tasks from database...
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {columns.map((col) => {
-            const columnTasks = tasks.filter(t => t.status === col.id);
+            const columnTasks = filteredTasks.filter(t => t.status === col.id);
 
             return (
-              <div key={col.id} className="bg-zinc-950 border border-white/10 rounded-2xl p-4 flex flex-col min-h-[500px]">
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+              <div
+                key={col.id}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, col.id)}
+                className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex flex-col min-h-[550px] transition-colors"
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
                   <div className="flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${col.color}`} />
                     <h3 className="font-bold text-xs text-white uppercase tracking-wider">{col.title}</h3>
                   </div>
-                  <span className="text-xs font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-lg">
                     {columnTasks.length}
                   </span>
                 </div>
 
+                {/* Column Task Cards */}
                 <div className="space-y-3 flex-1">
                   {columnTasks.length === 0 ? (
-                    <div className="h-32 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-[11px] text-zinc-600">
-                      Empty column
+                    <div className="h-32 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-[11px] text-zinc-600 font-medium">
+                      Drop tasks here
                     </div>
                   ) : (
                     columnTasks.map((task) => (
                       <motion.div
                         key={task.id}
-                        whileHover={{ scale: 1.01 }}
-                        className="bg-zinc-900/90 border border-white/10 p-4 rounded-xl space-y-3 shadow-lg"
+                        draggable={canManage}
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        whileHover={{ y: -2 }}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setIsDrawerOpen(true);
+                        }}
+                        className="bg-zinc-900/90 border border-white/10 hover:border-white/25 p-4 rounded-xl space-y-3 shadow-lg cursor-pointer transition-all relative group"
                       >
+                        {/* Title & Priority Badge */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-bold text-xs text-white leading-snug">{task.title}</h4>
-                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md ${
+                          <h4 className="font-bold text-xs text-white leading-snug group-hover:text-indigo-300 transition-colors">
+                            {task.title}
+                          </h4>
+                          <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
                             task.priority === 'urgent' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                             task.priority === 'high' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                            task.priority === 'medium' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
                             'bg-zinc-800 text-zinc-400'
                           }`}>
                             {task.priority}
                           </span>
                         </div>
 
+                        {/* Description */}
                         {task.description && (
-                          <p className="text-[11px] text-zinc-400 line-clamp-2">{task.description}</p>
+                          <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                            {task.description}
+                          </p>
                         )}
 
+                        {/* Assignee & Actions Footer */}
                         <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-2 border-t border-white/5">
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-zinc-400" />
-                            <span>{task.assignee_name || 'Unassigned'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-zinc-400" />
+                            <span className="text-zinc-300 font-medium truncate max-w-[100px]">
+                              {task.assignee_name || 'Unassigned'}
+                            </span>
                           </div>
 
-                          {/* Quick Status Change Selector */}
-                          {canManageTasks ? (
-                            <select
-                              value={task.status}
-                              onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                              className="bg-black border border-white/10 text-zinc-300 rounded px-1.5 py-0.5 text-[10px] focus:outline-none cursor-pointer"
-                            >
-                              <option value="todo">To Do</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="in_review">In Review</option>
-                              <option value="done">Completed</option>
-                            </select>
-                          ) : (
-                            <span className="text-[10px] text-zinc-500 font-mono capitalize">
-                              {task.status.replace('_', ' ')}
-                            </span>
+                          {/* Action Buttons: Edit / Delete */}
+                          {canManage && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => handleOpenEdit(task, e)}
+                                className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                                title="Edit Task"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteTask(task.id, e)}
+                                className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-red-500/10"
+                                title="Delete Task"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </motion.div>
@@ -238,69 +335,22 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Create Task Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-white/15 rounded-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white">Add New Task</h2>
-            <form onSubmit={handleCreateTask} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">Task Title</label>
-                <input
-                  type="text"
-                  required
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="e.g. Implement API Auth Middleware"
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                />
-              </div>
+      {/* Task Detail Drawer */}
+      <TaskDetailDrawer
+        task={selectedTask}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onTaskUpdated={fetchTasks}
+      />
 
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">Description</label>
-                <textarea
-                  value={newTaskDesc}
-                  onChange={(e) => setNewTaskDesc(e.target.value)}
-                  placeholder="Task details and acceptance criteria..."
-                  rows={3}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1">Priority</label>
-                <select
-                  value={newTaskPriority}
-                  onChange={(e) => setNewTaskPriority(e.target.value)}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-xs text-zinc-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-xl hover:bg-zinc-200"
-                >
-                  {creating ? 'Creating...' : 'Create Task'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Create / Edit Task Modal */}
+      <CreateTaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        projectId={selectedProjectId}
+        onTaskCreated={fetchTasks}
+        taskToEdit={taskToEdit}
+      />
     </div>
   );
 }

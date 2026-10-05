@@ -193,3 +193,14 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_notifications_user (user_id),
     INDEX idx_notifications_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. EMAIL VERIFICATIONS TABLE (OTP Codes)
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(150) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ev_email (email),
+    INDEX idx_ev_code (otp_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

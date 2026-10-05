@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();
+  const lastLoginType = localStorage.getItem('suprema_last_login_type');
+  const redirectTarget = lastLoginType === 'admin' ? '/admin-login' : '/login';
 
   if (loading) {
     return (
@@ -16,5 +18,5 @@ export default function ProtectedRoute() {
     );
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <Outlet /> : <Navigate to={redirectTarget} replace />;
 }

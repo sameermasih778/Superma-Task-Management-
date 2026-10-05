@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Navbar from './components/Navbar';
+import AdminNavbar from './components/AdminNavbar';
 import Footer from './components/Footer';
 
 // Public Marketing Pages
@@ -15,6 +16,7 @@ import ChangelogPage from './pages/ChangelogPage';
 import WaitlistPage from './pages/WaitlistPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import LoginPage from './pages/LoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
 import RegisterPage from './pages/RegisterPage';
 
 // Authenticated Dashboard Pages
@@ -36,18 +38,43 @@ function ScrollToTop() {
 
 function MainLayout() {
   const location = useLocation();
+  const { user } = useAuth();
+  
   const isDashboardRoute = location.pathname.startsWith('/dashboard');
+  const isAdminLoginRoute = location.pathname.startsWith('/admin-login') || location.pathname.startsWith('/staff-portal');
+
+  // Check if current user is Admin or Developer
+  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+
+  // Navbar Rendering Rules:
+  // 1. On Admin Login page (/admin-login, /staff-portal): render <AdminNavbar />
+  // 2. On /dashboard:
+  //    - If Admin/Developer (isStaffOrAdmin): REMOVE navbar completely
+  //    - If Simple User: render <Navbar />
+  // 3. On all other public pages: render <Navbar />
+  const renderNavbar = () => {
+    if (isAdminLoginRoute) {
+      return <AdminNavbar />;
+    }
+    if (isDashboardRoute) {
+      if (isStaffOrAdmin) {
+        return null;
+      }
+      return <Navbar />;
+    }
+    return <Navbar />;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-dark-1 text-white selection:bg-white/20 selection:text-white">
-      {!isDashboardRoute && <Navbar />}
+      {renderNavbar()}
       <div className="flex-grow">
         <Routes>
           {/* Public Pages */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin-login" element={<LoginPage />} />
-          <Route path="/staff-portal" element={<LoginPage />} />
+          <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route path="/staff-portal" element={<AdminLoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/blogs" element={<BlogPage />} />
           <Route path="/blog" element={<BlogPage />} />
@@ -71,7 +98,7 @@ function MainLayout() {
           </Route>
         </Routes>
       </div>
-      {!isDashboardRoute && <Footer />}
+      {!isDashboardRoute && !isAdminLoginRoute && <Footer />}
     </div>
   );
 }

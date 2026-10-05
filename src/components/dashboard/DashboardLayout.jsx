@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import DashboardHeader from './DashboardHeader';
+import { useAuth } from '../../context/AuthContext';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const { user } = useAuth();
+
+  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   return (
-    <div className="min-h-screen bg-black text-white flex">
+    <div className={`min-h-screen bg-black text-white flex ${isStaffOrAdmin ? 'pt-0' : 'pt-20 lg:pt-24'}`}>
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 

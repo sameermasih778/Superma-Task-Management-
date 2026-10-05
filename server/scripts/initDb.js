@@ -37,7 +37,7 @@ async function initializeDatabase() {
       console.log('⚙️ Executing Database Schema (schema.sql)...');
       const schemaSql = fs.readFileSync(schemaPath, 'utf8');
       await connection.query(schemaSql);
-      console.log('✅ All 11 tables & indexes created successfully.');
+      console.log('✅ All 12 tables & indexes created successfully.');
     } else {
       console.warn('⚠️ schema.sql file not found at:', schemaPath);
     }

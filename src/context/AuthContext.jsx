@@ -9,6 +9,19 @@ export const AuthProvider = ({ children }) => {
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to persist role-based login type
+  const persistLoginType = (userData) => {
+    const existingType = localStorage.getItem('suprema_last_login_type');
+    if (existingType === 'user') {
+      return; // Keep simple user login type intact
+    }
+    if (userData && ['super_admin', 'admin', 'developer'].includes(userData.role)) {
+      localStorage.setItem('suprema_last_login_type', 'admin');
+    } else if (!existingType) {
+      localStorage.setItem('suprema_last_login_type', 'user');
+    }
+  };
+
   // Initial Auth Verification on Page Load
   useEffect(() => {
     const initAuth = async () => {
@@ -18,6 +31,7 @@ export const AuthProvider = ({ children }) => {
           const data = await api.get('/auth/me');
           if (data.success && data.user) {
             setUser(data.user);
+            persistLoginType(data.user);
             // Default active workspace to first workspace
             if (data.user.workspaces && data.user.workspaces.length > 0) {
               const savedWsId = localStorage.getItem('suprema_active_ws_id');
@@ -44,6 +58,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('suprema_token', data.token);
       setToken(data.token);
       setUser(data.user);
+      persistLoginType(data.user);
       if (data.user.workspaces && data.user.workspaces.length > 0) {
         setActiveWorkspace(data.user.workspaces[0]);
         localStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
@@ -53,6 +68,24 @@ export const AuthProvider = ({ children }) => {
     }
     // If the API responded but without success/token, throw an error
     throw new Error(data.message || 'Login failed: Unexpected response from server');
+  };
+
+  const sendOtp = async (email) => {
+    return await api.post('/auth/send-otp', { email });
+  };
+
+  const verifyOtp = async (name, email, password, otp) => {
+    const data = await api.post('/auth/verify-otp', { name, email, password, otp });
+    if (data.success && data.token) {
+      localStorage.setItem('suprema_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      if (data.user.workspaces && data.user.workspaces.length > 0) {
+        setActiveWorkspace(data.user.workspaces[0]);
+        localStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
+      }
+      return data;
+    }
   };
 
   const register = async (name, email, password) => {
@@ -72,6 +105,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('suprema_token');
     localStorage.removeItem('suprema_active_ws_id');
+    localStorage.removeItem('suprema_login_type');
     setToken(null);
     setUser(null);
     setActiveWorkspace(null);
@@ -91,6 +125,8 @@ export const AuthProvider = ({ children }) => {
       activeWorkspace,
       loading,
       login,
+      sendOtp,
+      verifyOtp,
       register,
       logout,
       switchWorkspace,

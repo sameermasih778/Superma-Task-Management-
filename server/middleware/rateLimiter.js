@@ -1,11 +1,17 @@
 const rateLimit = require('express-rate-limit');
 
-// Global API Rate Limiter
+// Global API Rate Limiter (Bypassed for localhost / dev mode)
 const apiLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '500', 10), // 500 requests per IP (dev-friendly)
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10000', 10), // High limit for dev
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Permanently bypass rate limiting in development or for localhost IPs
+    if (process.env.NODE_ENV !== 'production') return true;
+    const clientIp = req.ip || req.connection?.remoteAddress || '';
+    return clientIp.includes('127.0.0.1') || clientIp.includes('::1') || clientIp.includes('localhost');
+  },
   message: {
     success: false,
     message: 'Too many requests from this IP address. Please try again after 15 minutes.'
