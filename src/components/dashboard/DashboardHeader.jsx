@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, Search, Bell, Plus, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import GlobalSearchModal from './GlobalSearchModal';
 
 export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal }) {
   const { user } = useAuth();
@@ -9,6 +10,19 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global Ctrl + K Keyboard listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -39,25 +53,30 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
   };
 
   return (
-    <header className="h-16 bg-zinc-950/80 border-b border-white/10 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Left: Mobile Menu Toggle & Global Search */}
-      <div className="flex items-center gap-3 flex-1">
-        <button
-          onClick={onToggleSidebar}
-          className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+    <>
+      <header className="h-16 bg-zinc-950/80 border-b border-white/10 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        {/* Left: Mobile Menu Toggle & Global Search Trigger */}
+        <div className="flex items-center gap-3 flex-1">
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
 
-        <div className="relative max-w-md w-full hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input
-            type="text"
-            placeholder="Search projects, tasks, or team members..."
-            className="w-full bg-zinc-900/80 border border-white/10 rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-all"
-          />
+          <div
+            onClick={() => setIsSearchOpen(true)}
+            className="relative max-w-md w-full hidden sm:flex items-center bg-zinc-900/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-zinc-400 hover:border-white/20 transition-all cursor-pointer justify-between group"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />
+              <span>Search projects, tasks, or team members...</span>
+            </div>
+            <kbd className="hidden md:inline-flex items-center gap-0.5 text-[10px] bg-zinc-800 border border-white/10 text-zinc-400 px-1.5 py-0.5 rounded font-mono">
+              Ctrl K
+            </kbd>
+          </div>
         </div>
-      </div>
 
       {/* Right Actions: New Task Button & Notifications Bell */}
       <div className="flex items-center gap-3">
@@ -135,6 +154,9 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
           )}
         </div>
       </div>
+
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
+  </>
   );
 }

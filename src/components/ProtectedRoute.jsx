@@ -3,9 +3,10 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute() {
-  const { isAuthenticated, loading } = useAuth();
-  const lastLoginType = localStorage.getItem('suprema_last_login_type');
-  const redirectTarget = lastLoginType === 'admin' ? '/admin-login' : '/login';
+  const { isAuthenticated, loading, user } = useAuth();
+  const loginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
+  const isStaff = loginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+  const redirectTarget = isStaff ? '/admin-login' : '/login';
 
   if (loading) {
     return (

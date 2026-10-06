@@ -44,7 +44,8 @@ function MainLayout() {
   const isAdminLoginRoute = location.pathname.startsWith('/admin-login') || location.pathname.startsWith('/staff-portal');
 
   // Check if current user is Admin or Developer
-  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+  const activeLoginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
+  const isStaffOrAdmin = activeLoginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   // Navbar Rendering Rules:
   // 1. On Admin Login page (/admin-login, /staff-portal): render <AdminNavbar />

@@ -4,7 +4,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
  * Universal Fetch Helper with JWT Token Header
  */
 const request = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('suprema_token');
+  const token = sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
 
   const headers = {
     'Content-Type': 'application/json',

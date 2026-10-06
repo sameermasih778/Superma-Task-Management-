@@ -23,10 +23,12 @@ export default function Navbar() {
   ];
 
   const handleSignOut = () => {
-    const lastType = localStorage.getItem('suprema_last_login_type');
+    const isStaff = sessionStorage.getItem('suprema_login_type') === 'admin' || 
+                    localStorage.getItem('suprema_last_login_type') === 'admin' || 
+                    ['super_admin', 'admin', 'developer'].includes(user?.role);
     logout();
     setMobileMenuOpen(false);
-    if (lastType === 'admin') {
+    if (isStaff) {
       navigate('/admin-login');
     } else {
       navigate('/login');

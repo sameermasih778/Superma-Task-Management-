@@ -21,8 +21,9 @@ export default function LoginPage() {
 
     try {
       console.log('[LoginPage] Submitting login for:', email);
+      sessionStorage.setItem('suprema_login_type', 'user');
       localStorage.setItem('suprema_last_login_type', 'user');
-      const result = await login(email, password);
+      const result = await login(email, password, 'user');
       console.log('[LoginPage] Login result:', result);
       // Simple user lands on the main website home page with Navbar
       navigate('/');

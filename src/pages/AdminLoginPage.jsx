@@ -22,8 +22,9 @@ export default function AdminLoginPage() {
 
     try {
       console.log('[AdminLoginPage] Submitting login for:', email);
+      sessionStorage.setItem('suprema_login_type', 'admin');
       localStorage.setItem('suprema_last_login_type', 'admin');
-      const result = await login(email, password);
+      const result = await login(email, password, 'admin');
       console.log('[AdminLoginPage] Login result:', result);
       navigate('/dashboard');
     } catch (err) {
@@ -35,10 +36,8 @@ export default function AdminLoginPage() {
     }
   };
 
-  const selectRolePreset = (roleType, demoEmail) => {
-    setSelectedRole(roleType);
-    setEmail(demoEmail);
-    setPassword('Password123!');
+  const selectRolePreset = (roleType) => {
+    setSelectedRole(prev => (prev === roleType ? null : roleType));
   };
 
   return (
@@ -109,7 +108,7 @@ export default function AdminLoginPage() {
           </motion.p>
         </div>
 
-        {/* Interactive Quick Fill Role Selection Pills */}
+        {/* Role Selection Mode Indicators */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -118,7 +117,7 @@ export default function AdminLoginPage() {
         >
           <button
             type="button"
-            onClick={() => selectRolePreset('super_admin', 'admin@suprema.io')}
+            onClick={() => selectRolePreset('super_admin')}
             className={`relative py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               selectedRole === 'super_admin' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
             }`}
@@ -136,7 +135,7 @@ export default function AdminLoginPage() {
 
           <button
             type="button"
-            onClick={() => selectRolePreset('developer', 'developer@suprema.io')}
+            onClick={() => selectRolePreset('developer')}
             className={`relative py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               selectedRole === 'developer' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
             }`}

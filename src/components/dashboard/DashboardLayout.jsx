@@ -9,7 +9,8 @@ export default function DashboardLayout() {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const { user } = useAuth();
 
-  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+  const activeLoginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
+  const isStaffOrAdmin = activeLoginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   return (
     <div className={`min-h-screen bg-black text-white flex ${isStaffOrAdmin ? 'pt-0' : 'pt-20 lg:pt-24'}`}>

@@ -19,12 +19,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const navigate = useNavigate();
 
-  const isStaffOrAdmin = localStorage.getItem('suprema_last_login_type') === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+  const activeLoginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
+  const isStaffOrAdmin = activeLoginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   const handleLogout = () => {
-    const lastType = localStorage.getItem('suprema_last_login_type');
+    const isStaff = sessionStorage.getItem('suprema_login_type') === 'admin' || 
+                    localStorage.getItem('suprema_last_login_type') === 'admin' || 
+                    ['super_admin', 'admin', 'developer'].includes(user?.role);
     logout();
-    if (lastType === 'admin') {
+    if (isStaff) {
       navigate('/admin-login');
     } else {
       navigate('/login');
