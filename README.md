@@ -359,12 +359,4 @@ VITE_API_URL=http://localhost:5000/api/v1
 
 > **`JWT_SECRET` has a hardcoded fallback** (`suprema_jwt_super_secret_key_2026_dev_mode`) in the source so local dev works out of the box. This must be set to a real value in any deployed environment, or tokens can be forged.
 
----
 
-## Notes & Known Behaviours
-
-- **No live updates.** New signups appear in the admin panel on next page load — there is no polling or WebSocket. A refresh is required.
-- **OTP fallback.** Without SMTP credentials the verification code is printed to the server console, so registration works offline.
-- **Strict SQL mode is not enabled** on the development database. MySQL will silently coerce an invalid `ENUM` value instead of rejecting it — see migration `002` for why that matters. Enabling `STRICT_TRANS_TABLES` is recommended.
-- **Uploads** are stored on local disk in `server/uploads/` and served at `/uploads`. There is no object storage or CDN.
-- **Bundle size.** `npm run build` warns that the main JS chunk exceeds 500 kB, largely due to the marketing media on the landing page.
