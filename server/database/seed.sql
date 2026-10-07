@@ -11,7 +11,7 @@
 INSERT INTO users (id, name, email, password_hash, avatar_url, role, status) VALUES
 (1, 'Super Admin', 'admin@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', 'super_admin', 'active'),
 (2, 'Sarah Jenkins', 'sarah@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', 'admin', 'active'),
-(3, 'Sameer Khokhar', 'developer@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sameer', 'member', 'active'),
+(3, 'Sameer Khokhar', 'developer@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sameer', 'developer', 'active'),
 (4, 'Alex Rivera', 'alex@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex', 'member', 'active'),
 (5, 'Client User', 'client@suprema.io', '$2a$10$hknYRN3WqeKeVD.iuX/Xxu4b1PHWwySu/W2OwSGuxRyRrrH4qVpde', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Client', 'viewer', 'active')
 ON DUPLICATE KEY UPDATE name=VALUES(name);

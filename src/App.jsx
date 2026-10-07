@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 import Navbar from './components/Navbar';
 import AdminNavbar from './components/AdminNavbar';
@@ -25,6 +26,7 @@ import DashboardOverview from './pages/DashboardOverview';
 import ProjectsPage from './pages/ProjectsPage';
 import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -94,6 +96,9 @@ function MainLayout() {
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="teams" element={<TeamsPage />} />
+              <Route element={<AdminRoute />}>
+                <Route path="users" element={<AdminUsersPage />} />
+              </Route>
               <Route path="activity" element={<DashboardOverview />} />
             </Route>
           </Route>

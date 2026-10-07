@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -11,7 +11,8 @@ import {
   ChevronDown,
   Building2,
   Globe,
-  Shield
+  Shield,
+  UserCog
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
@@ -21,6 +22,24 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   const activeLoginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
   const isStaffOrAdmin = activeLoginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+
+  // The sidebar is `position: fixed`, so it ignores the DashboardLayout top
+  // padding and would slide underneath the public Navbar (which is also fixed
+  // and z-50) on member accounts. Staff portals render no Navbar at all, so the
+  // measured height is 0 for them and the sidebar correctly sits at top-0.
+  // Measuring beats hardcoding, because the Navbar height changes with viewport
+  // width (pt-4/md:pt-6 plus the responsive inner padding).
+  const [navOffset, setNavOffset] = useState(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const navbar = document.querySelector('[data-public-navbar]');
+      setNavOffset(navbar ? Math.round(navbar.getBoundingClientRect().bottom) : 0);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
 
   const handleLogout = () => {
     const isStaff = sessionStorage.getItem('suprema_login_type') === 'admin' || 
@@ -39,14 +58,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { label: 'Projects', path: '/dashboard/projects', icon: FolderKanban },
     { label: 'Tasks Board', path: '/dashboard/tasks', icon: CheckSquare },
     { label: 'Teams', path: '/dashboard/teams', icon: Users },
-    { label: 'Activity Feed', path: '/dashboard/activity', icon: Activity }
+    { label: 'Activity Feed', path: '/dashboard/activity', icon: Activity },
+    ...(isStaffOrAdmin ? [{ label: 'User Management', path: '/dashboard/users', icon: UserCog }] : [])
   ];
 
   return (
     <aside
-      className={`fixed top-0 left-0 z-40 w-64 h-screen bg-zinc-950 border-r border-white/10 transition-transform duration-300 flex flex-col justify-between ${
-        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}
+      style={navOffset ? { top: navOffset, height: `calc(100vh - ${navOffset}px)` } : undefined}
+      className={`fixed left-0 z-40 w-64 bg-zinc-950 border-r border-white/10 transition-transform duration-300 flex flex-col justify-between ${
+        navOffset ? '' : 'top-0 h-screen'
+      } ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
     >
       <div>
         {/* Top Brand Header & Workspace Switcher */}

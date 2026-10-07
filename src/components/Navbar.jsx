@@ -36,7 +36,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-4 md:pt-6 px-3 sm:px-4 flex justify-center pointer-events-none">
+    <header data-public-navbar className="fixed top-0 left-0 right-0 z-50 pt-4 md:pt-6 px-3 sm:px-4 flex justify-center pointer-events-none">
       <div className="pointer-events-auto max-w-5xl w-full bg-black/95 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-2xl flex flex-col transition-all">
         
         <div className="flex items-center justify-between w-full">

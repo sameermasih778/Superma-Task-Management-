@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(255) DEFAULT NULL,
-    role ENUM('super_admin', 'admin', 'member', 'viewer') NOT NULL DEFAULT 'member',
+    role ENUM('super_admin', 'admin', 'developer', 'member', 'viewer') NOT NULL DEFAULT 'member',
     status ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

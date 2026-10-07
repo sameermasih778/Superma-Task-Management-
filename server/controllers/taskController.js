@@ -2,16 +2,18 @@ const pool = require('../config/db');
 
 /**
  * GET /api/v1/tasks?project_id=1&status=todo&assignee_id=3
- * Fetch tasks with optional filters
+ * GET /api/v1/tasks?workspace_id=1&status=todo
+ * Fetch tasks with optional filters.
+ * Scope by either a single project_id, or every project inside a workspace_id.
  */
 const getTasks = async (req, res, next) => {
   try {
-    const { project_id, status, priority, assignee_id, parent_id } = req.query;
+    const { project_id, workspace_id, status, priority, assignee_id, parent_id } = req.query;
 
-    if (!project_id) {
+    if (!project_id && !workspace_id) {
       return res.status(400).json({
         success: false,
-        message: 'Validation Error: project_id query parameter is required'
+        message: 'Validation Error: either project_id or workspace_id query parameter is required'
       });
     }
 
@@ -24,12 +26,22 @@ const getTasks = async (req, res, next) => {
              (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id) AS subtask_count,
              (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS comment_count
       FROM tasks t
+      JOIN projects p ON t.project_id = p.id
       LEFT JOIN users u_assignee ON t.assignee_id = u_assignee.id
       LEFT JOIN users u_creator ON t.created_by = u_creator.id
-      WHERE t.project_id = ?
     `;
 
-    const queryParams = [project_id];
+    const queryParams = [];
+
+    // Scope: project_id wins when both are supplied, so an explicit project
+    // filter is never silently widened to a whole workspace.
+    if (project_id) {
+      query += ' WHERE t.project_id = ?';
+      queryParams.push(project_id);
+    } else {
+      query += ' WHERE p.workspace_id = ?';
+      queryParams.push(workspace_id);
+    }
 
     if (status) {
       query += ' AND t.status = ?';
