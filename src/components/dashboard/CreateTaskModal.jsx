@@ -16,14 +16,27 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
   const [estimatedHours, setEstimatedHours] = useState('');
 
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  // Only used when the modal is opened without a project (header "New Task").
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (activeWorkspace?.id) {
       fetchWorkspaceMembers();
+      fetchProjects();
     }
   }, [activeWorkspace?.id]);
+
+  const fetchProjects = async () => {
+    try {
+      const data = await api.get(`/projects?workspace_id=${activeWorkspace.id}`);
+      setProjects(data.projects || []);
+    } catch (err) {
+      console.warn('Failed to fetch projects:', err.message);
+    }
+  };
 
   useEffect(() => {
     if (taskToEdit) {
@@ -37,7 +50,12 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
     } else {
       resetForm();
     }
-  }, [taskToEdit, isOpen]);
+
+    // Pre-select the project the modal was opened from. When it was opened from
+    // the header button there is no project, so the selector starts empty and
+    // the user has to choose one.
+    setSelectedProjectId(projectId ? String(projectId) : '');
+  }, [taskToEdit, isOpen, projectId]);
 
   const resetForm = () => {
     setTitle('');
@@ -61,13 +79,20 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !projectId) return;
+    // `projectId` may be null when the modal was opened from the header button,
+    // in which case the user picks a project from the selector below.
+    const targetProjectId = projectId ?? (selectedProjectId ? parseInt(selectedProjectId, 10) : null);
+
+    if (!title.trim() || !targetProjectId) {
+      if (!targetProjectId) setError('Please choose a project for this task.');
+      return;
+    }
 
     setSubmitting(true);
     setError('');
 
     const payload = {
-      project_id: parseInt(projectId, 10),
+      project_id: targetProjectId,
       title: title.trim(),
       description: description.trim(),
       priority,
@@ -142,6 +167,31 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Shown whenever the modal was opened without a project in context,
+                which is the case for the header "New Task" button. */}
+            {!projectId && (
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                  Project *
+                </label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  required
+                  className="w-full cursor-pointer rounded-xl border border-white/10 bg-zinc-900/90 px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                >
+                  <option value="" disabled>
+                    Select a project…
+                  </option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
                 Task Title *

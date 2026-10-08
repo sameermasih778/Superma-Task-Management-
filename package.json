@@ -9,6 +9,7 @@
     "dev:server": "cd server && npm run dev",
     "start:server": "cd server && npm start",
     "db:init": "cd server && npm run db:init",
+    "db:reset": "cd server && npm run db:reset",
     "db:migrate": "cd server && npm run db:migrate",
     "build": "vite build",
     "lint": "oxlint",

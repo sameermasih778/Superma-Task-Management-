@@ -17,7 +17,7 @@ const getWorkspaceActivity = async (req, res, next) => {
 
     const [activities] = await pool.query(
       `SELECT al.id, al.workspace_id, al.user_id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
-              u.name AS user_name, u.avatar_url AS user_avatar
+              u.name AS user_name, u.avatar_url AS user_avatar, u.role AS user_role
        FROM activity_logs al
        LEFT JOIN users u ON al.user_id = u.id
        WHERE al.workspace_id = ?

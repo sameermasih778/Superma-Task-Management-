@@ -1,25 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Users, Plus, Shield, Mail } from 'lucide-react';
+import { getAvatarFor } from '../utils/avatar';
+import {
+  Users,
+  Plus,
+  Shield,
+  Mail,
+  UserPlus,
+  X,
+  Trash2,
+  Check,
+  ChevronRight,
+  FolderKanban,
+  Search,
+  UserCheck,
+  Crown,
+  AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TeamsPage() {
-  const { activeWorkspace } = useAuth();
+  const { user, activeWorkspace } = useAuth();
   const [teams, setTeams] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchMember, setSearchMember] = useState('');
+
+  // Modals
+  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isInviteMemberOpen, setIsInviteMemberOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState(null); // For team detail modal
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(false);
+
+  // Form states
+  const [teamName, setTeamName] = useState('');
+  const [teamDesc, setTeamDesc] = useState('');
+  const [submittingTeam, setSubmittingTeam] = useState(false);
+
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [submittingInvite, setSubmittingInvite] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState(null); // { type: 'success' | 'error', text }
+
+  // Assign member to team state
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignRole, setAssignRole] = useState('member');
+  const [submittingAssign, setSubmittingAssign] = useState(false);
+
+  const canManage = ['super_admin', 'admin', 'member'].includes(user?.role);
 
   const fetchData = async () => {
     if (!activeWorkspace?.id) return;
     setLoading(true);
     try {
-      const teamsRes = await api.get(`/teams?workspace_id=${activeWorkspace.id}`);
+      const [teamsRes, memRes] = await Promise.all([
+        api.get(`/teams?workspace_id=${activeWorkspace.id}`),
+        api.get(`/workspaces/${activeWorkspace.id}/members`)
+      ]);
       setTeams(teamsRes.teams || []);
-
-      const memRes = await api.get(`/workspaces/${activeWorkspace.id}/members`);
       setMembers(memRes.members || []);
     } catch (err) {
-      console.warn(err.message);
+      console.warn('Error fetching teams/members:', err.message);
     } finally {
       setLoading(false);
     }
@@ -29,71 +72,623 @@ export default function TeamsPage() {
     fetchData();
   }, [activeWorkspace?.id]);
 
+  // Create Team
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!teamName.trim() || !activeWorkspace?.id) return;
+    setSubmittingTeam(true);
+    try {
+      const res = await api.post('/teams', {
+        workspace_id: activeWorkspace.id,
+        name: teamName.trim(),
+        description: teamDesc.trim() || null
+      });
+      if (res.success) {
+        setTeamName('');
+        setTeamDesc('');
+        setIsCreateTeamOpen(false);
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to create team');
+    } finally {
+      setSubmittingTeam(false);
+    }
+  };
+
+  // Invite Member to Workspace
+  const handleInviteMember = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !activeWorkspace?.id) return;
+    setSubmittingInvite(true);
+    setInviteMsg(null);
+    try {
+      const res = await api.post(`/workspaces/${activeWorkspace.id}/members`, {
+        email: inviteEmail.trim(),
+        role: inviteRole
+      });
+      if (res.success) {
+        setInviteMsg({ type: 'success', text: res.message || 'Member invited successfully!' });
+        setInviteEmail('');
+        fetchData();
+        setTimeout(() => {
+          setIsInviteMemberOpen(false);
+          setInviteMsg(null);
+        }, 1500);
+      }
+    } catch (err) {
+      setInviteMsg({ type: 'error', text: err.message || 'Failed to invite member' });
+    } finally {
+      setSubmittingInvite(false);
+    }
+  };
+
+  // Open Team Details
+  const handleOpenTeamModal = async (team) => {
+    setSelectedTeam(team);
+    setLoadingTeamMembers(true);
+    try {
+      const res = await api.get(`/teams/${team.id}/members`);
+      setTeamMembers(res.members || []);
+    } catch (err) {
+      console.warn('Failed to fetch team members:', err.message);
+    } finally {
+      setLoadingTeamMembers(false);
+    }
+  };
+
+  // Assign user to team
+  const handleAssignUserToTeam = async (e) => {
+    e.preventDefault();
+    if (!assignUserId || !selectedTeam?.id) return;
+    setSubmittingAssign(true);
+    try {
+      const res = await api.post(`/teams/${selectedTeam.id}/members`, {
+        user_id: Number(assignUserId),
+        role: assignRole
+      });
+      if (res.success) {
+        setAssignUserId('');
+        // Refresh team members
+        const membersRes = await api.get(`/teams/${selectedTeam.id}/members`);
+        setTeamMembers(membersRes.members || []);
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to add member to team');
+    } finally {
+      setSubmittingAssign(false);
+    }
+  };
+
+  // Remove member from team
+  const handleRemoveTeamMember = async (userId) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await api.delete(`/teams/${selectedTeam.id}/members/${userId}`);
+      setTeamMembers(prev => prev.filter(m => m.id !== userId));
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to remove member');
+    }
+  };
+
+  // Delete Team
+  const handleDeleteTeam = async (teamId) => {
+    if (!window.confirm('Are you sure you want to delete this team?')) return;
+    try {
+      await api.delete(`/teams/${teamId}`);
+      setSelectedTeam(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete team');
+    }
+  };
+
+  const filteredMembers = members.filter(m =>
+    m.name?.toLowerCase().includes(searchMember.toLowerCase()) ||
+    m.email?.toLowerCase().includes(searchMember.toLowerCase())
+  );
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Users className="w-6 h-6 text-white" />
-          Teams & Members
-        </h1>
-        <p className="text-xs text-zinc-400 mt-1">
-          Collaborators, department teams, and role-based permissions in {activeWorkspace?.name}.
-        </p>
-      </div>
-
-      {/* Teams Grid */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-400">Department Teams</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {teams.map((t) => (
-            <div key={t.id} className="bg-zinc-950 border border-white/10 p-5 rounded-2xl space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-white">{t.name}</h3>
-                <span className="text-[10px] bg-white/10 text-zinc-300 font-bold px-2 py-0.5 rounded-full">
-                  {t.member_count} Members
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 line-clamp-2">{t.description || 'No description.'}</p>
-            </div>
-          ))}
+    <div className="space-y-8 pb-12">
+      {/* Header with Title and Top Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <Users className="w-6 h-6 text-indigo-400" />
+            Teams & Collaborators
+          </h1>
+          <p className="text-xs text-zinc-400 mt-1">
+            Manage department squads, workspace collaborators, and role assignments in{' '}
+            <span className="text-white font-semibold">{activeWorkspace?.name || 'Workspace'}</span>.
+          </p>
         </div>
+
+        {canManage && (
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsInviteMemberOpen(true)}
+              className="bg-zinc-900 hover:bg-zinc-850 text-white border border-white/10 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4 text-zinc-400" />
+              <span>Invite Member</span>
+            </button>
+
+            <button
+              onClick={() => setIsCreateTeamOpen(true)}
+              className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Team</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Workspace Members Table */}
+      {/* SECTION 1: DEPARTMENT TEAMS */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider text-zinc-400">Workspace Collaborators</h2>
-        <div className="bg-zinc-950 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <span>Department Teams</span>
+            <span className="text-[10px] bg-white/10 text-zinc-300 font-bold px-2 py-0.5 rounded-full">
+              {teams.length}
+            </span>
+          </h2>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-32 bg-zinc-900/40 rounded-2xl animate-pulse border border-white/5" />
+            ))}
+          </div>
+        ) : teams.length === 0 ? (
+          <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center space-y-3 bg-zinc-950/50">
+            <Users className="w-8 h-8 text-zinc-600 mx-auto" />
+            <h3 className="text-sm font-semibold text-white">No department teams yet</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+              Create teams like Engineering, Design, or Marketing to organize projects and delegate assignments.
+            </p>
+            {canManage && (
+              <button
+                onClick={() => setIsCreateTeamOpen(true)}
+                className="mt-2 text-xs font-semibold bg-white text-black px-4 py-2 rounded-xl hover:bg-zinc-200 transition-colors cursor-pointer"
+              >
+                + Create First Team
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {teams.map((t) => (
+              <motion.div
+                key={t.id}
+                whileHover={{ y: -2 }}
+                onClick={() => handleOpenTeamModal(t)}
+                className="bg-zinc-950 border border-white/10 hover:border-white/25 p-5 rounded-2xl space-y-3 cursor-pointer transition-all shadow-lg group relative"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
+                    {t.name}
+                  </h3>
+                  <span className="text-[10px] bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-semibold px-2.5 py-0.5 rounded-full">
+                    {t.member_count} {t.member_count === 1 ? 'Member' : 'Members'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                  {t.description || 'Dedicated workspace squad for collaborative tasks.'}
+                </p>
+
+                <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-white/5">
+                  <span>Created {new Date(t.created_at).toLocaleDateString()}</span>
+                  <span className="text-zinc-400 group-hover:text-white flex items-center gap-1 font-semibold transition-colors">
+                    Manage Squad <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: WORKSPACE COLLABORATORS TABLE */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <span>Workspace Collaborators</span>
+            <span className="text-[10px] bg-white/10 text-zinc-300 font-bold px-2 py-0.5 rounded-full">
+              {members.length}
+            </span>
+          </h2>
+
+          {/* Member Search Bar */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchMember}
+              onChange={(e) => setSearchMember(e.target.value)}
+              placeholder="Search members..."
+              className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+            />
+          </div>
+        </div>
+
+        <div className="bg-zinc-950 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
           <table className="w-full text-left text-xs text-zinc-300">
-            <thead className="bg-zinc-900 border-b border-white/10 text-zinc-400 uppercase text-[10px]">
+            <thead className="bg-zinc-900/80 border-b border-white/10 text-zinc-400 uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="p-3.5">User</th>
-                <th className="p-3.5">Email</th>
-                <th className="p-3.5">Workspace Role</th>
-                <th className="p-3.5">Joined Date</th>
+                <th className="p-4">User</th>
+                <th className="p-4">Email</th>
+                <th className="p-4">Workspace Role</th>
+                <th className="p-4">Joined Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {members.map((m) => (
-                <tr key={m.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 flex items-center gap-2.5 font-bold text-white">
-                    <img src={m.avatar_url} alt={m.name} className="w-7 h-7 rounded-full bg-zinc-800" />
-                    <span>{m.name}</span>
-                  </td>
-                  <td className="p-3.5 text-zinc-400">{m.email}</td>
-                  <td className="p-3.5">
-                    <span className="capitalize bg-white/10 text-zinc-200 px-2 py-0.5 rounded-full font-semibold text-[10px]">
-                      {m.workspace_role}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-zinc-500">
-                    {new Date(m.joined_at).toLocaleDateString()}
+              {filteredMembers.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-zinc-500">
+                    No collaborators found matching your search.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredMembers.map((m) => {
+                  const isOwner = m.workspace_role === 'owner';
+                  return (
+                    <tr key={m.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="p-4 flex items-center gap-3 font-semibold text-white">
+                        <img
+                          src={getAvatarFor(m, 'global_role')}
+                          alt={m.name}
+                          className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10"
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span>{m.name}</span>
+                            {isOwner && <Crown className="w-3 h-3 text-amber-400" title="Workspace Owner" />}
+                          </div>
+                          <span className="text-[10px] text-zinc-500 capitalize">{m.global_role || 'member'}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-zinc-400">{m.email}</td>
+                      <td className="p-4">
+                        <span
+                          className={`capitalize px-2.5 py-0.5 rounded-full font-semibold text-[10px] border ${
+                            isOwner
+                              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                              : m.workspace_role === 'admin'
+                              ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400'
+                              : 'bg-white/10 border-white/10 text-zinc-300'
+                          }`}
+                        >
+                          {m.workspace_role}
+                        </span>
+                      </td>
+                      <td className="p-4 text-zinc-500">
+                        {new Date(m.joined_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: CREATE TEAM MODAL */}
+      {/* ==================================================================== */}
+      <AnimatePresence>
+        {isCreateTeamOpen && (
+          <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-400" />
+                  Create New Team
+                </h3>
+                <button
+                  onClick={() => setIsCreateTeamOpen(false)}
+                  className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateTeam} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400">Team Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="e.g. Frontend Engineering, Product Design"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400">Description (Optional)</label>
+                  <textarea
+                    rows={3}
+                    value={teamDesc}
+                    onChange={(e) => setTeamDesc(e.target.value)}
+                    placeholder="What does this department squad focus on?"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateTeamOpen(false)}
+                    className="px-4 py-2 text-xs text-zinc-400 hover:text-white rounded-xl border border-white/10 hover:bg-zinc-900 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingTeam || !teamName.trim()}
+                    className="px-5 py-2 text-xs font-bold bg-white text-black rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+                  >
+                    {submittingTeam ? 'Creating...' : 'Create Team'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: INVITE MEMBER MODAL */}
+      {/* ==================================================================== */}
+      <AnimatePresence>
+        {isInviteMemberOpen && (
+          <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-indigo-400" />
+                  Invite Collaborator
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsInviteMemberOpen(false);
+                    setInviteMsg(null);
+                  }}
+                  className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {inviteMsg && (
+                <div
+                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                    inviteMsg.type === 'success'
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                      : 'bg-red-500/15 border border-red-500/30 text-red-400'
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{inviteMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleInviteMember} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400">Collaborator Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="colleague@suprema.io"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    The user must have an existing account on the Suprema platform.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400">Workspace Role</label>
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="member">Member (Can create & manage tasks)</option>
+                    <option value="admin">Admin (Can manage projects, teams & settings)</option>
+                    <option value="viewer">Viewer (Read-only access)</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsInviteMemberOpen(false);
+                      setInviteMsg(null);
+                    }}
+                    className="px-4 py-2 text-xs text-zinc-400 hover:text-white rounded-xl border border-white/10 hover:bg-zinc-900 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingInvite || !inviteEmail.trim()}
+                    className="px-5 py-2 text-xs font-bold bg-white text-black rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 cursor-pointer shadow-md"
+                  >
+                    {submittingInvite ? 'Inviting...' : 'Send Invitation'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: TEAM DETAILS & SQUAD MANAGEMENT MODAL */}
+      {/* ==================================================================== */}
+      <AnimatePresence>
+        {selectedTeam && (
+          <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-white/10 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-400" />
+                    {selectedTeam.name}
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {selectedTeam.description || 'No description provided.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {canManage && (
+                    <button
+                      onClick={() => handleDeleteTeam(selectedTeam.id)}
+                      className="p-1.5 text-zinc-500 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
+                      title="Delete Team"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedTeam(null)}
+                    className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Add Member To Team Form */}
+              {canManage && (
+                <form onSubmit={handleAssignUserToTeam} className="p-4 bg-zinc-900/60 border border-white/10 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5 text-zinc-400" />
+                    Add Workspace Member to Squad
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <select
+                      value={assignUserId}
+                      onChange={(e) => setAssignUserId(e.target.value)}
+                      className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                    >
+                      <option value="">Select a member...</option>
+                      {members
+                        .filter(m => !teamMembers.some(tm => tm.id === m.id))
+                        .map(m => (
+                          <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
+                        ))}
+                    </select>
+
+                    <select
+                      value={assignRole}
+                      onChange={(e) => setAssignRole(e.target.value)}
+                      className="w-28 bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                    >
+                      <option value="member">Member</option>
+                      <option value="leader">Leader</option>
+                    </select>
+
+                    <button
+                      type="submit"
+                      disabled={submittingAssign || !assignUserId}
+                      className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {submittingAssign ? 'Adding...' : 'Add'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Team Roster List */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Squad Roster</span>
+                  <span className="text-zinc-500">{teamMembers.length} Members</span>
+                </h4>
+
+                {loadingTeamMembers ? (
+                  <p className="text-xs text-zinc-500 py-4 text-center">Loading squad members...</p>
+                ) : teamMembers.length === 0 ? (
+                  <p className="text-xs text-zinc-500 py-4 text-center border border-dashed border-white/5 rounded-2xl">
+                    No members assigned to this squad yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {teamMembers.map((tm) => (
+                      <div
+                        key={tm.id}
+                        className="flex items-center justify-between p-3 bg-zinc-900/40 border border-white/5 rounded-xl text-xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getAvatarFor(tm, 'global_role')}
+                            alt={tm.name}
+                            className="w-7 h-7 rounded-full bg-zinc-800"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-white">{tm.name}</span>
+                              <span
+                                className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                                  tm.role === 'leader'
+                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                    : 'bg-white/10 text-zinc-300'
+                                }`}
+                              >
+                                {tm.role}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-zinc-500">{tm.email}</span>
+                          </div>
+                        </div>
+
+                        {canManage && (
+                          <button
+                            onClick={() => handleRemoveTeamMember(tm.id)}
+                            className="text-zinc-500 hover:text-red-400 p-1.5 transition-colors cursor-pointer"
+                            title="Remove from squad"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

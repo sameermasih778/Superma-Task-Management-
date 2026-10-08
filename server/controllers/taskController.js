@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { logActivity } = require('../utils/activityLogger');
 
 /**
  * GET /api/v1/tasks?project_id=1&status=todo&assignee_id=3
@@ -24,6 +25,7 @@ const getTasks = async (req, res, next) => {
              u_assignee.name AS assignee_name, u_assignee.avatar_url AS assignee_avatar,
              u_creator.name AS creator_name,
              (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id) AS subtask_count,
+             (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id AND sub.status = 'done') AS completed_subtask_count,
              (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS comment_count
       FROM tasks t
       JOIN projects p ON t.project_id = p.id
@@ -33,8 +35,6 @@ const getTasks = async (req, res, next) => {
 
     const queryParams = [];
 
-    // Scope: project_id wins when both are supplied, so an explicit project
-    // filter is never silently widened to a whole workspace.
     if (project_id) {
       query += ' WHERE t.project_id = ?';
       queryParams.push(project_id);
@@ -83,6 +83,77 @@ const getTasks = async (req, res, next) => {
 };
 
 /**
+ * GET /api/v1/tasks/:id
+ * Fetch a single task by ID with metadata
+ */
+const getTaskById = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+
+    const [tasks] = await pool.query(
+      `SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority,
+              t.due_date, t.estimated_hours, t.actual_hours, t.created_by, t.assignee_id, t.parent_id,
+              t.created_at, t.updated_at,
+              p.name AS project_name, p.workspace_id,
+              u_assignee.name AS assignee_name, u_assignee.email AS assignee_email, u_assignee.avatar_url AS assignee_avatar,
+              u_creator.name AS creator_name,
+              (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id) AS subtask_count,
+              (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id AND sub.status = 'done') AS completed_subtask_count,
+              (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS comment_count
+       FROM tasks t
+       JOIN projects p ON t.project_id = p.id
+       LEFT JOIN users u_assignee ON t.assignee_id = u_assignee.id
+       LEFT JOIN users u_creator ON t.created_by = u_creator.id
+       WHERE t.id = ?`,
+      [taskId]
+    );
+
+    if (tasks.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      task: tasks[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/tasks/:id/subtasks
+ * Fetch all subtasks for a parent task
+ */
+const getSubtasks = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+
+    const [subtasks] = await pool.query(
+      `SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority,
+              t.due_date, t.estimated_hours, t.parent_id, t.created_at, t.updated_at,
+              u_assignee.name AS assignee_name, u_assignee.avatar_url AS assignee_avatar
+       FROM tasks t
+       LEFT JOIN users u_assignee ON t.assignee_id = u_assignee.id
+       WHERE t.parent_id = ?
+       ORDER BY t.created_at ASC`,
+      [taskId]
+    );
+
+    res.status(200).json({
+      success: true,
+      count: subtasks.length,
+      subtasks
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/v1/tasks
  * Create a new task or subtask
  */
@@ -109,6 +180,10 @@ const createTask = async (req, res, next) => {
       });
     }
 
+    // Get project workspace_id for audit logs
+    const [projectRows] = await pool.query('SELECT workspace_id, name FROM projects WHERE id = ?', [project_id]);
+    const workspaceId = projectRows.length > 0 ? projectRows[0].workspace_id : null;
+
     const [result] = await pool.query(
       `INSERT INTO tasks 
        (project_id, title, description, status, priority, due_date, estimated_hours, created_by, assignee_id, parent_id)
@@ -129,17 +204,131 @@ const createTask = async (req, res, next) => {
 
     const taskId = result.insertId;
 
+    // Log activity
+    if (workspaceId) {
+      await logActivity({
+        workspace_id: workspaceId,
+        user_id: userId,
+        action: parent_id ? 'SUBTASK_CREATED' : 'TASK_CREATED',
+        entity_type: 'task',
+        entity_id: taskId,
+        details: {
+          title: title.trim(),
+          project_id,
+          parent_id: parent_id || null,
+          priority
+        }
+      });
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Task created successfully',
+      message: parent_id ? 'Subtask created successfully' : 'Task created successfully',
       task: {
         id: taskId,
         project_id,
         title: title.trim(),
+        description: description || null,
         status,
         priority,
-        assignee_id,
-        parent_id
+        due_date: due_date || null,
+        estimated_hours,
+        created_by: userId,
+        assignee_id: assignee_id || null,
+        parent_id: parent_id || null
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/v1/tasks/:id
+ * Full update for task details (title, description, status, priority, assignee, due_date, etc.)
+ */
+const updateTask = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      due_date,
+      estimated_hours,
+      assignee_id
+    } = req.body;
+
+    const [existing] = await pool.query(
+      `SELECT t.*, p.workspace_id 
+       FROM tasks t 
+       JOIN projects p ON t.project_id = p.id 
+       WHERE t.id = ?`,
+      [taskId]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    const current = existing[0];
+
+    const updatedTitle = title !== undefined ? title.trim() : current.title;
+    const updatedDescription = description !== undefined ? description : current.description;
+    const updatedStatus = status !== undefined ? status : current.status;
+    const updatedPriority = priority !== undefined ? priority : current.priority;
+    const updatedDueDate = due_date !== undefined ? due_date : current.due_date;
+    const updatedEstimatedHours = estimated_hours !== undefined ? estimated_hours : current.estimated_hours;
+    const updatedAssigneeId = assignee_id !== undefined ? assignee_id : current.assignee_id;
+
+    await pool.query(
+      `UPDATE tasks 
+       SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, estimated_hours = ?, assignee_id = ?
+       WHERE id = ?`,
+      [
+        updatedTitle,
+        updatedDescription,
+        updatedStatus,
+        updatedPriority,
+        updatedDueDate || null,
+        updatedEstimatedHours || 0,
+        updatedAssigneeId || null,
+        taskId
+      ]
+    );
+
+    // Audit log
+    await logActivity({
+      workspace_id: current.workspace_id,
+      user_id: req.user.id,
+      action: 'TASK_UPDATED',
+      entity_type: 'task',
+      entity_id: taskId,
+      details: {
+        title: updatedTitle,
+        status: updatedStatus,
+        priority: updatedPriority
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Task updated successfully',
+      task: {
+        id: Number(taskId),
+        project_id: current.project_id,
+        title: updatedTitle,
+        description: updatedDescription,
+        status: updatedStatus,
+        priority: updatedPriority,
+        due_date: updatedDueDate,
+        estimated_hours: updatedEstimatedHours,
+        assignee_id: updatedAssigneeId
       }
     });
 
@@ -150,7 +339,7 @@ const createTask = async (req, res, next) => {
 
 /**
  * PATCH /api/v1/tasks/:id/status
- * Kanban status update (drag and drop)
+ * Kanban status update (drag and drop or checkbox toggle)
  */
 const updateTaskStatus = async (req, res, next) => {
   try {
@@ -165,7 +354,14 @@ const updateTaskStatus = async (req, res, next) => {
       });
     }
 
-    const [existing] = await pool.query('SELECT id FROM tasks WHERE id = ?', [taskId]);
+    const [existing] = await pool.query(
+      `SELECT t.*, p.workspace_id 
+       FROM tasks t 
+       JOIN projects p ON t.project_id = p.id 
+       WHERE t.id = ?`,
+      [taskId]
+    );
+
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -173,7 +369,23 @@ const updateTaskStatus = async (req, res, next) => {
       });
     }
 
+    const current = existing[0];
+
     await pool.query('UPDATE tasks SET status = ? WHERE id = ?', [status, taskId]);
+
+    // Audit log
+    await logActivity({
+      workspace_id: current.workspace_id,
+      user_id: req.user.id,
+      action: current.parent_id ? 'SUBTASK_STATUS_UPDATED' : 'TASK_STATUS_UPDATED',
+      entity_type: 'task',
+      entity_id: taskId,
+      details: {
+        title: current.title,
+        old_status: current.status,
+        new_status: status
+      }
+    });
 
     res.status(200).json({
       success: true,
@@ -187,13 +399,20 @@ const updateTaskStatus = async (req, res, next) => {
 
 /**
  * DELETE /api/v1/tasks/:id
- * Delete a task by ID
+ * Delete a task or subtask by ID
  */
 const deleteTask = async (req, res, next) => {
   try {
     const taskId = req.params.id;
 
-    const [existing] = await pool.query('SELECT id FROM tasks WHERE id = ?', [taskId]);
+    const [existing] = await pool.query(
+      `SELECT t.*, p.workspace_id 
+       FROM tasks t 
+       JOIN projects p ON t.project_id = p.id 
+       WHERE t.id = ?`,
+      [taskId]
+    );
+
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -201,7 +420,19 @@ const deleteTask = async (req, res, next) => {
       });
     }
 
+    const current = existing[0];
+
     await pool.query('DELETE FROM tasks WHERE id = ?', [taskId]);
+
+    // Audit log
+    await logActivity({
+      workspace_id: current.workspace_id,
+      user_id: req.user.id,
+      action: current.parent_id ? 'SUBTASK_DELETED' : 'TASK_DELETED',
+      entity_type: 'task',
+      entity_id: taskId,
+      details: { title: current.title }
+    });
 
     res.status(200).json({
       success: true,
@@ -215,7 +446,10 @@ const deleteTask = async (req, res, next) => {
 
 module.exports = {
   getTasks,
+  getTaskById,
+  getSubtasks,
   createTask,
+  updateTask,
   updateTaskStatus,
   deleteTask
 };

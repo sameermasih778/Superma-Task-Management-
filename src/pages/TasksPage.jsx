@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +20,6 @@ import {
   Calendar
 } from 'lucide-react';
 import TaskDetailDrawer from '../components/dashboard/TaskDetailDrawer';
-import CreateTaskModal from '../components/dashboard/CreateTaskModal';
 
 export default function TasksPage() {
   const { user, activeWorkspace } = useAuth();
@@ -36,14 +36,15 @@ export default function TasksPage() {
   // Drawer & Modal State
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState(null);
+  // The create/edit modal is owned by DashboardLayout so the header's "New Task"
+  // button works from every page. This page only opens it and reacts to the
+  // result.
+  const { setIsNewTaskModalOpen, setEditingTask, setNewTaskProjectId } = useOutletContext() || {};
 
   // Dragging state
   const [draggedTaskId, setDraggedTaskId] = useState(null);
 
   // Permissions
-  const isViewer = user?.role === 'viewer';
   const canManage = ['super_admin', 'admin', 'member'].includes(user?.role);
 
   // Fetch Projects on Workspace Change
@@ -65,7 +66,7 @@ export default function TasksPage() {
   }, [activeWorkspace?.id]);
 
   // Fetch Tasks for Selected Project
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!selectedProjectId) return;
     setLoading(true);
     try {
@@ -76,11 +77,11 @@ export default function TasksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProjectId]);
 
   useEffect(() => {
     fetchTasks();
-  }, [selectedProjectId]);
+  }, [fetchTasks]);
 
   // Status Change (Kanban Drop or Dropdown change)
   const handleStatusChange = async (taskId, newStatus) => {
@@ -124,14 +125,17 @@ export default function TasksPage() {
   // Open Edit Modal
   const handleOpenEdit = (task, e) => {
     e.stopPropagation();
-    setTaskToEdit(task);
-    setIsModalOpen(true);
+    setEditingTask(task);
+    // Pre-select the project this task already belongs to, so the selector
+    // reflects reality instead of starting blank.
+    setNewTaskProjectId(task.project_id ? String(task.project_id) : null);
+    setIsNewTaskModalOpen(true);
   };
 
   // Open Create Modal
   const handleOpenCreate = () => {
-    setTaskToEdit(null);
-    setIsModalOpen(true);
+    setEditingTask(null);
+    setIsNewTaskModalOpen(true);
   };
 
   // Filter Tasks by Search & Priority
@@ -343,14 +347,26 @@ export default function TasksPage() {
         onTaskUpdated={fetchTasks}
       />
 
-      {/* Create / Edit Task Modal */}
-      <CreateTaskModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        projectId={selectedProjectId}
-        onTaskCreated={fetchTasks}
-        taskToEdit={taskToEdit}
-      />
+      {/* The create/edit modal itself is rendered by DashboardLayout. This page
+          only needs to know when a task was created so it can refetch. */}
+      <TaskCreatedListener onCreated={fetchTasks} />
     </div>
   );
+}
+
+/**
+ * Subscribes to the "suprema:tasks-changed" event that DashboardLayout fires
+ * after a task is created from the header button.
+ *
+ * Kept as a tiny component so the effect is cleaned up with the page instead
+ * of leaking a window listener on every mount.
+ */
+function TaskCreatedListener({ onCreated }) {
+  useEffect(() => {
+    const handler = () => onCreated();
+    window.addEventListener('suprema:tasks-changed', handler);
+    return () => window.removeEventListener('suprema:tasks-changed', handler);
+  }, [onCreated]);
+
+  return null;
 }

@@ -21,13 +21,10 @@ export const AuthProvider = ({ children }) => {
     // 2. User's role from server data ('super_admin', 'admin', 'developer' -> 'admin')
     // 3. Active tab's sessionStorage
     // 4. Shared localStorage fallback
-    let effectiveType = loginType;
-    if (!effectiveType && userData && userData.role) {
-      effectiveType = ['super_admin', 'admin', 'developer'].includes(userData.role) ? 'admin' : 'user';
-    }
-    if (!effectiveType) {
-      effectiveType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type') || 'user';
-    }
+    // Portal preference is strictly constrained by actual user role:
+    // Non-staff users ('member', 'viewer') CANNOT be flagged as 'admin'
+    const isStaff = userData && ['super_admin', 'admin', 'developer'].includes(userData.role);
+    const effectiveType = isStaff ? 'admin' : 'user';
 
     sessionStorage.setItem('suprema_login_type', effectiveType);
     localStorage.setItem('suprema_last_login_type', effectiveType);
@@ -61,9 +58,35 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  /**
+   * Re-read the session when a profile picture changes.
+   * Without this the sidebar keeps showing the previous avatar until a full
+   * reload, because `user` is only hydrated once on mount.
+   */
+  useEffect(() => {
+    const refresh = async () => {
+      const storedToken = sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
+      if (!storedToken) return;
+
+      try {
+        const data = await api.get('/auth/me');
+        if (data.success && data.user) setUser(data.user);
+      } catch (err) {
+        console.warn('Could not refresh profile:', err.message);
+      }
+    };
+
+    window.addEventListener('suprema:profile-updated', refresh);
+    return () => window.removeEventListener('suprema:profile-updated', refresh);
+  }, []);
+
   const login = async (email, password, explicitLoginType = null) => {
-    console.log('[AuthContext] Attempting login for:', email);
-    const data = await api.post('/auth/login', { email, password });
+    console.log('[AuthContext] Attempting login for:', email, 'portal:', explicitLoginType);
+    const data = await api.post('/auth/login', {
+      email,
+      password,
+      portal: explicitLoginType
+    });
     console.log('[AuthContext] Login response:', data);
     if (data.success && data.token) {
       setToken(data.token);

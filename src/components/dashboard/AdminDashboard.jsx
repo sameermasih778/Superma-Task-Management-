@@ -1,270 +1,344 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../utils/api';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
-  Terminal,
   Server,
   Database,
   Users,
-  FolderKanban,
-  Activity,
-  Globe,
-  RefreshCw,
-  Zap,
+  UserCog,
+  Bell,
+  Activity as ActivityIcon,
+  UserX,
   CheckCircle2,
-  Lock,
-  ChevronRight,
-  Shield
+  XCircle,
+  FolderKanban,
+  RefreshCw,
+  Globe,
+  ShieldAlert
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {
+  DashboardShell,
+  DashboardBanner,
+  StatCard,
+  SectionCard,
+  SectionLink,
+  ActivityFeed,
+  EmptyState,
+  LoadingBlock
+} from './DashboardShell';
+import useDashboardData from '../../hooks/useDashboardData';
+import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
+function formatUptime(seconds) {
+  if (!seconds && seconds !== 0) return '--';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+/**
+ * Admin / Super Admin portal.
+ *
+ * Focus: platform health and user governance. Unlike the previous version, the
+ * status tiles read from GET /health (which itself performs a live
+ * `SELECT 1`) rather than hardcoded strings, so they cannot report "Online"
+ * while the database is actually unreachable.
+ */
 export default function AdminDashboard() {
-  const { user, activeWorkspace } = useAuth();
-  const [activities, setActivities] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [dbStatus, setDbStatus] = useState('Online (Port 3306)');
-  const [serverHealth, setServerHealth] = useState('UP (Port 5000)');
+  const { user } = useAuth();
+  const { workspaceName, projects, tasks, teams, activities, loading, error } =
+    useDashboardData();
 
-  const [stats, setStats] = useState({
-    totalProjects: 0,
-    totalTasks: 0,
-    activeTeams: 0,
-    totalLogs: 0
-  });
+  const [users, setUsers] = useState([]);
+  const [health, setHealth] = useState(null);
+  const [healthError, setHealthError] = useState(null);
+  const [checking, setChecking] = useState(false);
 
-  const fetchData = async () => {
-    if (!activeWorkspace?.id) return;
-    setLoading(true);
+  const isSuperAdmin = user?.role === 'super_admin';
 
-    try {
-      // 1. Fetch Projects
-      const projData = await api.get(`/projects?workspace_id=${activeWorkspace.id}`);
-      const fetchedProjects = projData.projects || [];
-      setProjects(fetchedProjects);
+  const fetchAdminData = useCallback(async () => {
+    setChecking(true);
+    // Both calls are independent; a failure in one must not blank the other.
+    const [usersRes, healthRes] = await Promise.allSettled([
+      api.get('/admin/users'),
+      api.get('/health')
+    ]);
 
-      // 2. Fetch Teams count
-      const teamsData = await api.get(`/teams?workspace_id=${activeWorkspace.id}`);
+    if (usersRes.status === 'fulfilled') setUsers(usersRes.value.users || []);
+    else setHealthError('Could not load user directory');
 
-      // 3. Fetch Activity Audit Logs
-      const actData = await api.get(`/activity?workspace_id=${activeWorkspace.id}`);
-      const fetchedActivities = actData.activities || [];
-      setActivities(fetchedActivities);
+    if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
+    else setHealthError((prev) => prev || 'Health endpoint unreachable');
 
-      setStats({
-        totalProjects: fetchedProjects.length,
-        totalTasks: fetchedProjects.reduce((acc, p) => acc + (p.total_tasks || 0), 0),
-        activeTeams: teamsData.count || 0,
-        totalLogs: fetchedActivities.length
-      });
-
-    } catch (err) {
-      console.warn('Admin dashboard fetch error:', err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setChecking(false);
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [activeWorkspace?.id]);
+    fetchAdminData();
+  }, [fetchAdminData]);
+
+  const roleCounts = users.reduce((acc, u) => {
+    acc[u.role] = (acc[u.role] || 0) + 1;
+    return acc;
+  }, {});
+
+  const suspended = users.filter((u) => u.status === 'suspended').length;
+  const dbUp = health?.database === 'CONNECTED';
+  const apiUp = health?.status === 'UP';
+
+  const healthRows = [
+    {
+      label: 'API server',
+      value: health ? `Express · :${health.uptimeSeconds !== undefined ? '' : ''}5000` : '--',
+      detail: health
+        ? `${health.environment} · up ${formatUptime(health.uptimeSeconds)}`
+        : 'Unreachable',
+      ok: apiUp,
+      icon: <Server className="h-4 w-4" />
+    },
+    {
+      label: 'Database',
+      value: health?.database || '--',
+      detail: health
+        ? `suprema_db · ${dbUp ? 'accepting queries' : 'not responding'}`
+        : 'Unreachable',
+      ok: dbUp,
+      icon: <Database className="h-4 w-4" />
+    },
+    {
+      label: 'Workspaces in view',
+      value: projects.length ? 1 : 0,
+      detail: workspaceName || 'No workspace selected',
+      ok: true,
+      icon: <FolderKanban className="h-4 w-4" />
+    },
+    {
+      label: 'Tasks indexed',
+      value: tasks.length,
+      detail: `${teams.length} team${teams.length === 1 ? '' : 's'} in workspace`,
+      ok: true,
+      icon: <ActivityIcon className="h-4 w-4" />
+    }
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Admin Cyber Control Banner */}
-      <div className="bg-gradient-to-r from-indigo-950 via-zinc-950 to-black p-6 rounded-2xl border border-indigo-500/30 relative overflow-hidden shadow-[0_0_40px_rgba(99,102,241,0.12)]">
-        <div className="absolute top-0 right-0 w-80 h-40 bg-indigo-500/15 blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Administrative & Developer Portal
-              </span>
-              <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-md">
-                RBAC Active
-              </span>
-            </div>
-            
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              <span>Admin System Console</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            </h1>
-            
-            <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-              Logged in as <strong className="text-white capitalize">{user?.name}</strong> ({user?.role || 'Administrator'}) • Full System Privileges Enabled
-            </p>
-          </div>
+    <DashboardShell tier="admin">
+      <DashboardBanner
+        eyebrow={isSuperAdmin ? 'Super Admin Console' : 'Admin Console'}
+        title={`Platform oversight · ${user?.name || 'Administrator'}`}
+        subtitle="System health, the user directory, and the audit trail for this workspace."
+        chips={[
+          { label: `Role: ${user?.role || 'admin'}` },
+          { label: health ? `env: ${health.environment}` : 'env: unknown' }
+        ]}
+        actions={[
+          { to: '/dashboard/users', label: 'Manage users', icon: <UserCog className="h-4 w-4" /> },
+          { to: '/', label: 'Public site', icon: <Globe className="h-4 w-4" /> }
+        ]}
+      />
 
-          <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
-            >
-              <Globe className="w-4 h-4" />
-              <span>Public Website</span>
-            </Link>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Total users"
+          value={users.length}
+          hint="Across all workspaces"
+          icon={<Users className="h-4 w-4" />}
+          tone="accent"
+          loading={checking}
+        />
+        <StatCard
+          label="Active"
+          value={users.filter((u) => u.status === 'active').length}
+          hint="Can sign in"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          tone="positive"
+          loading={checking}
+        />
+        <StatCard
+          label="Suspended"
+          value={suspended}
+          hint={suspended ? 'Blocked at login' : 'No suspensions'}
+          icon={<UserX className="h-4 w-4" />}
+          tone={suspended ? 'danger' : 'neutral'}
+          loading={checking}
+        />
+        <StatCard
+          label="Privileged"
+          value={(roleCounts.super_admin || 0) + (roleCounts.admin || 0) + (roleCounts.developer || 0)}
+          hint="Admin + developer roles"
+          icon={<ShieldCheck className="h-4 w-4" />}
+          tone="warning"
+          loading={checking}
+        />
       </div>
 
-      {/* System Health & Core Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-zinc-950 border border-indigo-500/20 p-5 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 mb-3">
-            <span className="text-xs font-semibold">Database Health</span>
-            <Database className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-xl font-mono font-bold text-white truncate">suprema_db</p>
-          <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>{dbStatus}</span>
-          </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <SectionCard
+            title="System health"
+            icon={<Server className="h-4 w-4" />}
+            action={
+              <button
+                onClick={fetchAdminData}
+                disabled={checking}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-zinc-400 transition-colors hover:text-white disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${checking ? 'animate-spin' : ''}`} />
+                Re-check
+              </button>
+            }
+          >
+            {healthError && !health ? (
+              <EmptyState
+                icon={<XCircle className="h-6 w-6" />}
+                title="Health check failed"
+                hint={healthError}
+              />
+            ) : (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {healthRows.map((row) => (
+                  <li
+                    key={row.label}
+                    className="rounded-xl border border-white/10 bg-zinc-900/50 p-4"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        <span className="text-[color:var(--accent)]">{row.icon}</span>
+                        {row.label}
+                      </span>
+                      {row.ok ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Healthy
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-red-400">
+                          <XCircle className="h-3 w-3" />
+                          Down
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-white">{row.value}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-zinc-500">{row.detail}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="User directory"
+            icon={<Users className="h-4 w-4" />}
+            action={<SectionLink to="/dashboard/users" label="Open user management" />}
+          >
+            {checking && users.length === 0 ? (
+              <LoadingBlock label="Loading user directory..." />
+            ) : users.length === 0 ? (
+              <EmptyState
+                icon={<Users className="h-6 w-6" />}
+                title="No users returned"
+                hint="The directory endpoint returned nothing."
+              />
+            ) : (
+              <ul className="divide-y divide-white/[0.06]">
+                {users.slice(0, 8).map((u) => (
+                  <li key={u.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-[10px] font-black text-white">
+                        {u.name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold text-white">
+                          {u.name}
+                        </span>
+                        <span className="block truncate text-[10px] text-zinc-500">{u.email}</span>
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase text-zinc-400">
+                        {String(u.role).replace('_', ' ')}
+                      </span>
+                      {u.status !== 'active' && (
+                        <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[9px] font-bold uppercase text-red-400">
+                          {u.status}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
         </div>
 
-        <div className="bg-zinc-950 border border-indigo-500/20 p-5 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 mb-3">
-            <span className="text-xs font-semibold">Server API Status</span>
-            <Server className="w-4 h-4 text-indigo-400" />
-          </div>
-          <p className="text-xl font-mono font-bold text-white truncate">Express v4.21</p>
-          <div className="flex items-center gap-1.5 text-[11px] text-indigo-400 mt-1">
-            <Terminal className="w-3 h-3" />
-            <span>{serverHealth}</span>
-          </div>
-        </div>
+        <div className="space-y-6">
+          <SectionCard title="Administrative actions" icon={<ShieldCheck className="h-4 w-4" />}>
+            <div className="space-y-2">
+              <Link
+                to="/dashboard/users"
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3 transition-colors hover:border-[color:var(--accent-ring)]"
+              >
+                <span>
+                  <span className="block text-xs font-semibold text-white">User management</span>
+                  <span className="block text-[11px] text-zinc-500">
+                    Roles, suspend, password reset
+                  </span>
+                </span>
+                <UserCog className="h-4 w-4 text-zinc-600" />
+              </Link>
 
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl">
-          <div className="flex items-center justify-between text-zinc-400 mb-3">
-            <span className="text-xs font-semibold">Total Projects</span>
-            <FolderKanban className="w-4 h-4 text-amber-400" />
-          </div>
-          <p className="text-2xl font-bold text-white">{loading ? '...' : stats.totalProjects}</p>
-          <p className="text-[11px] text-zinc-500 mt-1">Across all workspace boards</p>
-        </div>
+              <Link
+                to="/dashboard/users"
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3 transition-colors hover:border-[color:var(--accent-ring)]"
+              >
+                <span>
+                  <span className="block text-xs font-semibold text-white">Send notification</span>
+                  <span className="block text-[11px] text-zinc-500">Everyone or one user</span>
+                </span>
+                <Bell className="h-4 w-4 text-zinc-600" />
+              </Link>
 
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl">
-          <div className="flex items-center justify-between text-zinc-400 mb-3">
-            <span className="text-xs font-semibold">Audit Logs Count</span>
-            <Activity className="w-4 h-4 text-sky-400" />
-          </div>
-          <p className="text-2xl font-bold text-white">{loading ? '...' : stats.totalLogs}</p>
-          <p className="text-[11px] text-zinc-500 mt-1">Audit logs recorded</p>
-        </div>
-      </div>
-
-      {/* Admin Controls & Security Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Admin Control Actions & Projects Summary (2 Cols) */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Quick Staff Controls Panel */}
-          <div className="bg-zinc-950 border border-white/10 p-6 rounded-2xl space-y-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-400" />
-              <span>Administrative Privilege Controls</span>
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 bg-zinc-900/80 border border-white/10 rounded-xl text-left space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block">Super Admin</span>
-                <span className="text-xs font-semibold text-white">Full System Access</span>
-                <p className="text-[10px] text-zinc-500">Create, Edit, Delete all resources</p>
-              </div>
-
-              <div className="p-3.5 bg-zinc-900/80 border border-white/10 rounded-xl text-left space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Developer</span>
-                <span className="text-xs font-semibold text-white">API & DB Controls</span>
-                <p className="text-[10px] text-zinc-500">Endpoints & backend management</p>
-              </div>
-
-              <div className="p-3.5 bg-zinc-900/80 border border-white/10 rounded-xl text-left space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Standard User</span>
-                <span className="text-xs font-semibold text-white">Member Workspace</span>
-                <p className="text-[10px] text-zinc-500">Personal task queue access</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Projects Overview */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">System Projects Overview</h3>
-              <Link to="/dashboard/projects" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-medium">
-                Manage Projects <ChevronRight className="w-3 h-3" />
+              <Link
+                to="/dashboard/activity"
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3 transition-colors hover:border-[color:var(--accent-ring)]"
+              >
+                <span>
+                  <span className="block text-xs font-semibold text-white">Audit trail</span>
+                  <span className="block text-[11px] text-zinc-500">
+                    {activities.length} entries recorded
+                  </span>
+                </span>
+                <ActivityIcon className="h-4 w-4 text-zinc-600" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {projects.map((project) => {
-                const progress = project.total_tasks > 0 
-                  ? Math.round((project.completed_tasks / project.total_tasks) * 100) 
-                  : 0;
-
-                return (
-                  <div key={project.id} className="bg-zinc-950 border border-white/10 p-5 rounded-2xl space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: project.color || '#6366f1' }} />
-                        <h4 className="font-bold text-xs text-white">{project.name}</h4>
-                      </div>
-                      <span className="text-[9px] font-bold bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full uppercase">
-                        {project.status}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[11px]">
-                        <span className="text-zinc-500">Task Completion</span>
-                        <span className="text-white font-bold">{progress}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500 transition-all" style={{ width: `${progress}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Global System Activity & Security Logs Feed (1 Col) */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <span>Security Audit Trail</span>
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-white/10 rounded-2xl p-4 divide-y divide-white/5 max-h-[480px] overflow-y-auto">
-            {activities.length === 0 ? (
-              <p className="text-xs text-zinc-500 text-center py-8">No security logs recorded.</p>
-            ) : (
-              activities.map((act) => (
-                <div key={act.id} className="py-3 text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-indigo-300">{act.user_name || 'System Action'}</span>
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-zinc-400 text-[11px] font-mono">
-                    Action: <span className="text-emerald-400">{act.action}</span>
-                  </p>
-                </div>
-              ))
+            {!isSuperAdmin && (
+              <p className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-200/80">
+                <ShieldAlert className="mt-px h-3.5 w-3.5 shrink-0" />
+                Account deletion is restricted to super admins.
+              </p>
             )}
-          </div>
-        </div>
+          </SectionCard>
 
+          <SectionCard title="Audit trail" icon={<ActivityIcon className="h-4 w-4" />}>
+            {loading ? (
+              <LoadingBlock label="Loading audit trail..." />
+            ) : error ? (
+              <EmptyState title="Could not load activity" hint={error} />
+            ) : (
+              <ActivityFeed
+                activities={activities}
+                limit={10}
+                emptyHint="No audit entries for this workspace yet."
+              />
+            )}
+          </SectionCard>
+        </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

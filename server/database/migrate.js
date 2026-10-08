@@ -71,6 +71,59 @@ const migrations = [
         detail: `reset ${result.affectedRows} blank role(s) to 'member': ${rows.map((r) => r.email).join(', ')}`
       };
     }
+  },
+
+  {
+    // notifications.type needs an 'announcement' value.
+    //
+    // The admin broadcast endpoint sends type='announcement', but the ENUM only
+    // had info/task_assigned/mention/system. Because this server runs without
+    // STRICT_TRANS_TABLES, MySQL silently coerced the unknown value to ''
+    // instead of raising an error - so every broadcast was stored with a blank
+    // type and the header dropdown could not style announcements.
+    name: '003-notifications-type-enum-includes-announcement',
+    async up(pool) {
+      const [rows] = await pool.query("SHOW COLUMNS FROM notifications LIKE 'type'");
+      if (rows.length === 0) {
+        return { status: 'skipped', detail: 'notifications.type column not found - run `npm run db:init`' };
+      }
+
+      const current = rows[0].Type;
+      if (current.includes("'announcement'")) {
+        return { status: 'current', detail: current };
+      }
+
+      await pool.query(
+        "ALTER TABLE notifications MODIFY type ENUM('info','task_assigned','mention','system','announcement') NOT NULL DEFAULT 'info'"
+      );
+
+      return { status: 'applied', detail: `${current} -> + 'announcement'` };
+    }
+  },
+
+  {
+    // Repair notifications whose type was silently blanked to '' by migration
+    // 003's root cause. These rows were created by the admin broadcast
+    // endpoint, so 'announcement' is the accurate value to restore.
+    name: '004-repair-blank-notification-types',
+    async up(pool) {
+      const [rows] = await pool.query(
+        "SELECT id FROM notifications WHERE type IS NULL OR type = ''"
+      );
+
+      if (rows.length === 0) {
+        return { status: 'current', detail: 'no blank notification types found' };
+      }
+
+      const [result] = await pool.query(
+        "UPDATE notifications SET type = 'announcement' WHERE type IS NULL OR type = ''"
+      );
+
+      return {
+        status: 'applied',
+        detail: `restored ${result.affectedRows} blank notification type(s) to 'announcement'`
+      };
+    }
   }
 ];
 

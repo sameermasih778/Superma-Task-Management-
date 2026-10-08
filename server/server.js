@@ -15,8 +15,44 @@ const app = express();
 
 // Security Middlewares
 app.use(helmet());
+
+/**
+ * CORS configuration.
+ *
+ * `origin` is a resolver rather than a fixed string because Vite does NOT
+ * always run on 5173 - if that port is still held by a previous dev process it
+ * silently falls back to 5174, 5175, ... A hardcoded CLIENT_ORIGIN then
+ * rejects every API call: the server still processes the request and logs
+ * "200", but the browser discards the response because the
+ * Access-Control-Allow-Origin header does not match the page's origin. That
+ * surfaces in the UI as an authentication failure with nothing wrong with the
+ * credentials, which is very hard to debug.
+ *
+ * CLIENT_ORIGIN accepts a comma-separated list for multiple real origins. In
+ * development we additionally allow any loopback host on any port, which is
+ * safe (nothing outside this machine can present such an Origin) and removes
+ * the port-mismatch trap entirely. Production stays restricted to the
+ * explicitly configured origins - it never gets the loopback wildcard.
+ */
+const configuredOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const LOOPBACK_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
+
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Non-browser clients (curl, Postman, server-to-server) send no Origin.
+    if (!origin) return callback(null, true);
+
+    if (configuredOrigins.includes(origin)) return callback(null, true);
+
+    if (isDevelopment && LOOPBACK_ORIGIN.test(origin)) return callback(null, true);
+
+    return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

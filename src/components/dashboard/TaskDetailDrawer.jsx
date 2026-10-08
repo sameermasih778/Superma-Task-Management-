@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   CheckCircle2,
+  Circle,
   Clock,
   User,
   AlertCircle,
@@ -14,14 +15,42 @@ import {
   FileText,
   Calendar,
   Layers,
-  ChevronDown
+  ChevronDown,
+  CheckSquare,
+  Plus,
+  Edit3,
+  Save,
+  Check,
+  FolderKanban
 } from 'lucide-react';
 import api from '../../utils/api';
+import { getAvatarFor } from '../../utils/avatar';
 import { useAuth } from '../../context/AuthContext';
 
 export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated }) {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('comments'); // 'comments' | 'attachments'
+  const { user, activeWorkspace } = useAuth();
+  const [activeTab, setActiveTab] = useState('subtasks'); // 'subtasks' | 'comments' | 'attachments'
+
+  // Task Details & Edit State
+  const [taskDetails, setTaskDetails] = useState(task);
+  const [title, setTitle] = useState(task?.title || '');
+  const [description, setDescription] = useState(task?.description || '');
+  const [currentStatus, setCurrentStatus] = useState(task?.status || 'todo');
+  const [currentPriority, setCurrentPriority] = useState(task?.priority || 'medium');
+  const [assigneeId, setAssigneeId] = useState(task?.assignee_id || '');
+  const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.substring(0, 10) : '');
+  const [estimatedHours, setEstimatedHours] = useState(task?.estimated_hours || 0);
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Subtasks State
+  const [subtasks, setSubtasks] = useState([]);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+  const [addingSubtask, setAddingSubtask] = useState(false);
 
   // Comments State
   const [comments, setComments] = useState([]);
@@ -34,22 +63,182 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  // Task Edit State
-  const [currentStatus, setCurrentStatus] = useState(task?.status || 'todo');
-  const [currentPriority, setCurrentPriority] = useState(task?.priority || 'medium');
+  // Workspace Members for Assignee selection
+  const [members, setMembers] = useState([]);
 
-  const canManage = ['super_admin', 'admin', 'member'].includes(user?.role);
+  const canManage = ['super_admin', 'admin', 'developer', 'member'].includes(user?.role);
 
   useEffect(() => {
-    if (task?.id) {
-      setCurrentStatus(task.status);
-      setCurrentPriority(task.priority);
+    if (task?.id && isOpen) {
+      setTaskDetails(task);
+      setTitle(task.title || '');
+      setDescription(task.description || '');
+      setCurrentStatus(task.status || 'todo');
+      setCurrentPriority(task.priority || 'medium');
+      setAssigneeId(task.assignee_id || '');
+      setDueDate(task.due_date ? task.due_date.substring(0, 10) : '');
+      setEstimatedHours(task.estimated_hours || 0);
+
+      fetchFreshDetails();
+      fetchSubtasks();
       fetchComments();
       fetchAttachments();
+      fetchWorkspaceMembers();
     }
-  }, [task?.id]);
+  }, [task?.id, isOpen]);
 
-  // Fetch Comments
+  // Fetch full details
+  const fetchFreshDetails = async () => {
+    if (!task?.id) return;
+    try {
+      const data = await api.get(`/tasks/${task.id}`);
+      if (data.success && data.task) {
+        setTaskDetails(data.task);
+        setTitle(data.task.title || '');
+        setDescription(data.task.description || '');
+        setCurrentStatus(data.task.status || 'todo');
+        setCurrentPriority(data.task.priority || 'medium');
+        setAssigneeId(data.task.assignee_id || '');
+        setDueDate(data.task.due_date ? data.task.due_date.substring(0, 10) : '');
+        setEstimatedHours(data.task.estimated_hours || 0);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch fresh task details:', err.message);
+    }
+  };
+
+  // Fetch Workspace Members
+  const fetchWorkspaceMembers = async () => {
+    if (!activeWorkspace?.id) return;
+    try {
+      const res = await api.get(`/workspaces/${activeWorkspace.id}/members`);
+      setMembers(res.members || []);
+    } catch (err) {
+      console.warn('Failed to fetch workspace members:', err.message);
+    }
+  };
+
+  // Save Task Changes
+  const handleSaveTaskDetails = async (overrides = {}) => {
+    if (!task?.id) return;
+    setSavingTask(true);
+    try {
+      const payload = {
+        title: overrides.title !== undefined ? overrides.title : title,
+        description: overrides.description !== undefined ? overrides.description : description,
+        status: overrides.status !== undefined ? overrides.status : currentStatus,
+        priority: overrides.priority !== undefined ? overrides.priority : currentPriority,
+        assignee_id: overrides.assignee_id !== undefined ? overrides.assignee_id : (assigneeId ? Number(assigneeId) : null),
+        due_date: overrides.due_date !== undefined ? overrides.due_date : (dueDate || null),
+        estimated_hours: overrides.estimated_hours !== undefined ? overrides.estimated_hours : Number(estimatedHours)
+      };
+
+      const res = await api.put(`/tasks/${task.id}`, payload);
+      if (res.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+        if (onTaskUpdated) onTaskUpdated();
+      }
+    } catch (err) {
+      console.error('Error updating task details:', err.message);
+    } finally {
+      setSavingTask(false);
+      setIsEditingTitle(false);
+      setIsEditingDesc(false);
+    }
+  };
+
+  // Status Change
+  const handleStatusChange = async (newStatus) => {
+    setCurrentStatus(newStatus);
+    try {
+      await api.patch(`/tasks/${task.id}/status`, { status: newStatus });
+      if (onTaskUpdated) onTaskUpdated();
+    } catch (err) {
+      console.error('Status change error:', err.message);
+    }
+  };
+
+  // Priority Change
+  const handlePriorityChange = (newPriority) => {
+    setCurrentPriority(newPriority);
+    handleSaveTaskDetails({ priority: newPriority });
+  };
+
+  // Assignee Change
+  const handleAssigneeChange = (newAssigneeId) => {
+    setAssigneeId(newAssigneeId);
+    handleSaveTaskDetails({ assignee_id: newAssigneeId ? Number(newAssigneeId) : null });
+  };
+
+  // Due Date Change
+  const handleDueDateChange = (newDueDate) => {
+    setDueDate(newDueDate);
+    handleSaveTaskDetails({ due_date: newDueDate || null });
+  };
+
+  // SUBTASKS HANDLERS
+  const fetchSubtasks = async () => {
+    if (!task?.id) return;
+    setLoadingSubtasks(true);
+    try {
+      const data = await api.get(`/tasks/${task.id}/subtasks`);
+      setSubtasks(data.subtasks || []);
+    } catch (err) {
+      console.warn('Failed to fetch subtasks:', err.message);
+    } finally {
+      setLoadingSubtasks(false);
+    }
+  };
+
+  const handleAddSubtask = async (e) => {
+    e.preventDefault();
+    if (!newSubtaskTitle.trim() || !task?.id) return;
+    setAddingSubtask(true);
+    try {
+      const data = await api.post('/tasks', {
+        project_id: task.project_id,
+        title: newSubtaskTitle.trim(),
+        parent_id: task.id,
+        status: 'todo',
+        priority: 'medium'
+      });
+      if (data.success && data.task) {
+        setSubtasks(prev => [...prev, data.task]);
+        setNewSubtaskTitle('');
+        if (onTaskUpdated) onTaskUpdated();
+      }
+    } catch (err) {
+      console.error('Add subtask error:', err.message);
+    } finally {
+      setAddingSubtask(false);
+    }
+  };
+
+  const handleToggleSubtask = async (subtaskId, currentSubStatus) => {
+    const nextStatus = currentSubStatus === 'done' ? 'todo' : 'done';
+    try {
+      await api.patch(`/tasks/${subtaskId}/status`, { status: nextStatus });
+      setSubtasks(prev =>
+        prev.map(st => (st.id === subtaskId ? { ...st, status: nextStatus } : st))
+      );
+      if (onTaskUpdated) onTaskUpdated();
+    } catch (err) {
+      console.error('Toggle subtask error:', err.message);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId) => {
+    try {
+      await api.delete(`/tasks/${subtaskId}`);
+      setSubtasks(prev => prev.filter(st => st.id !== subtaskId));
+      if (onTaskUpdated) onTaskUpdated();
+    } catch (err) {
+      console.error('Delete subtask error:', err.message);
+    }
+  };
+
+  // COMMENTS HANDLERS
   const fetchComments = async () => {
     if (!task?.id) return;
     setLoadingComments(true);
@@ -63,7 +252,6 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Add Comment
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim() || !task?.id) return;
@@ -84,7 +272,6 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Delete Comment
   const handleDeleteComment = async (commentId) => {
     try {
       await api.delete(`/comments/${commentId}`);
@@ -94,7 +281,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Fetch Attachments
+  // ATTACHMENTS HANDLERS
   const fetchAttachments = async () => {
     if (!task?.id) return;
     setLoadingAttachments(true);
@@ -108,7 +295,6 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Upload Attachment
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !task?.id) return;
@@ -130,7 +316,6 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Delete Attachment
   const handleDeleteAttachment = async (attachmentId) => {
     try {
       await api.delete(`/attachments/${attachmentId}`);
@@ -140,18 +325,11 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
     }
   };
 
-  // Update Status
-  const handleStatusChange = async (newStatus) => {
-    setCurrentStatus(newStatus);
-    try {
-      await api.patch(`/tasks/${task.id}/status`, { status: newStatus });
-      if (onTaskUpdated) onTaskUpdated();
-    } catch (err) {
-      console.error('Status change error:', err.message);
-    }
-  };
-
   if (!isOpen || !task) return null;
+
+  // Progress computation
+  const completedSubtasksCount = subtasks.filter(st => st.status === 'done').length;
+  const subtasksPercent = subtasks.length > 0 ? Math.round((completedSubtasksCount / subtasks.length) * 100) : 0;
 
   const getPriorityStyle = (priority) => {
     switch (priority) {
@@ -164,8 +342,8 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-hidden bg-black/70 backdrop-blur-sm flex justify-end">
-        {/* Backdrop overlay clickable to close */}
+      <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-sm flex justify-end">
+        {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -183,18 +361,33 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
           className="relative w-full max-w-2xl bg-zinc-950 border-l border-white/15 h-full flex flex-col z-10 shadow-2xl overflow-hidden"
         >
           {/* Top Sticky Header */}
-          <div className="p-6 border-b border-white/10 flex items-start justify-between bg-zinc-950/90 backdrop-blur-md">
-            <div className="space-y-2 max-w-xl">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${getPriorityStyle(currentPriority)}`}>
-                  {currentPriority} Priority
-                </span>
+          <div className="p-6 border-b border-white/10 flex items-start justify-between bg-zinc-950/95 backdrop-blur-md">
+            <div className="space-y-3 flex-1 pr-4">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Priority Selector */}
+                {canManage ? (
+                  <select
+                    value={currentPriority}
+                    onChange={(e) => handlePriorityChange(e.target.value)}
+                    className={`text-[11px] font-bold uppercase px-3 py-1 rounded-full border cursor-pointer focus:outline-none ${getPriorityStyle(currentPriority)}`}
+                  >
+                    <option value="low" className="bg-zinc-900 text-zinc-300">Low Priority</option>
+                    <option value="medium" className="bg-zinc-900 text-indigo-400">Medium Priority</option>
+                    <option value="high" className="bg-zinc-900 text-amber-400">High Priority</option>
+                    <option value="urgent" className="bg-zinc-900 text-red-400">Urgent Priority</option>
+                  </select>
+                ) : (
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${getPriorityStyle(currentPriority)}`}>
+                    {currentPriority} Priority
+                  </span>
+                )}
 
+                {/* Status Selector */}
                 {canManage ? (
                   <select
                     value={currentStatus}
                     onChange={(e) => handleStatusChange(e.target.value)}
-                    className="bg-zinc-900 border border-white/15 text-white font-semibold text-xs rounded-full px-3 py-0.5 focus:outline-none cursor-pointer capitalize"
+                    className="bg-zinc-900 border border-white/15 text-white font-semibold text-xs rounded-full px-3 py-1 focus:outline-none cursor-pointer capitalize"
                   >
                     <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
@@ -202,15 +395,61 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                     <option value="done">Completed</option>
                   </select>
                 ) : (
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-white/10 capitalize">
+                  <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-white/10 capitalize">
                     {currentStatus.replace('_', ' ')}
+                  </span>
+                )}
+
+                {saveSuccess && (
+                  <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Saved
                   </span>
                 )}
               </div>
 
-              <h2 className="text-xl font-bold text-white tracking-tight leading-snug">
-                {task.title}
-              </h2>
+              {/* Editable Title */}
+              {isEditingTitle && canManage ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTaskDetails();
+                      if (e.key === 'Escape') setIsEditingTitle(false);
+                    }}
+                    autoFocus
+                    className="w-full bg-zinc-900 border border-white/20 rounded-xl px-3 py-1.5 text-lg font-bold text-white focus:outline-none focus:border-white/40"
+                  />
+                  <button
+                    onClick={() => handleSaveTaskDetails()}
+                    disabled={savingTask}
+                    className="bg-white text-black p-2 rounded-xl hover:bg-zinc-200 transition-colors cursor-pointer"
+                    title="Save Title"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2 group">
+                  <h2
+                    onClick={() => canManage && setIsEditingTitle(true)}
+                    className="text-xl font-bold text-white tracking-tight leading-snug cursor-pointer group-hover:text-zinc-200"
+                    title={canManage ? "Click to edit title" : undefined}
+                  >
+                    {title}
+                  </h2>
+                  {canManage && (
+                    <button
+                      onClick={() => setIsEditingTitle(true)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-white transition-opacity cursor-pointer"
+                      title="Edit Title"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
@@ -224,47 +463,155 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
           {/* Drawer Scrollable Body */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
-            {/* Metadata Badges Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-zinc-900/60 border border-white/10 rounded-2xl">
+            {/* Metadata Fields Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-zinc-900/60 border border-white/10 rounded-2xl">
+              
+              {/* Assignee Field */}
               <div className="space-y-1">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold flex items-center gap-1">
                   <User className="w-3 h-3 text-zinc-400" /> Assignee
                 </span>
-                <p className="text-xs font-semibold text-white truncate">
-                  {task.assignee_name || 'Unassigned'}
-                </p>
+                {canManage ? (
+                  <select
+                    value={assigneeId}
+                    onChange={(e) => handleAssigneeChange(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-xs font-semibold text-white truncate">
+                    {taskDetails?.assignee_name || 'Unassigned'}
+                  </p>
+                )}
               </div>
 
+              {/* Due Date Field */}
               <div className="space-y-1">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-zinc-400" /> Due Date
                 </span>
-                <p className="text-xs font-semibold text-white">
-                  {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Deadline'}
-                </p>
+                {canManage ? (
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => handleDueDateChange(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none cursor-pointer"
+                  />
+                ) : (
+                  <p className="text-xs font-semibold text-white">
+                    {dueDate ? new Date(dueDate).toLocaleDateString() : 'No Deadline'}
+                  </p>
+                )}
               </div>
 
+              {/* Estimated Hours Field */}
               <div className="space-y-1">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold flex items-center gap-1">
                   <Clock className="w-3 h-3 text-zinc-400" /> Estimated
                 </span>
-                <p className="text-xs font-semibold text-white">
-                  {task.estimated_hours ? `${task.estimated_hours} hrs` : 'N/A'}
+                {canManage ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={estimatedHours}
+                      onChange={(e) => setEstimatedHours(e.target.value)}
+                      onBlur={() => handleSaveTaskDetails({ estimated_hours: Number(estimatedHours) })}
+                      className="w-16 bg-zinc-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                    />
+                    <span className="text-xs text-zinc-400">hrs</span>
+                  </div>
+                ) : (
+                  <p className="text-xs font-semibold text-white">
+                    {estimatedHours ? `${estimatedHours} hrs` : 'N/A'}
+                  </p>
+                )}
+              </div>
+
+              {/* Project Info */}
+              <div className="space-y-1">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold flex items-center gap-1">
+                  <FolderKanban className="w-3 h-3 text-zinc-400" /> Project
+                </span>
+                <p className="text-xs font-semibold text-white truncate">
+                  {taskDetails?.project_name || 'Active Project'}
                 </p>
               </div>
+
             </div>
 
             {/* Task Description */}
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Description</h3>
-              <div className="p-4 bg-zinc-900/40 border border-white/5 rounded-2xl text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
-                {task.description || 'No detailed description provided for this task.'}
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Description</h3>
+                {canManage && !isEditingDesc && (
+                  <button
+                    onClick={() => setIsEditingDesc(true)}
+                    className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
               </div>
+
+              {isEditingDesc && canManage ? (
+                <div className="space-y-2">
+                  <textarea
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter detailed task description..."
+                    className="w-full bg-zinc-900 border border-white/15 rounded-2xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setIsEditingDesc(false)}
+                      className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white rounded-xl border border-white/10 hover:bg-zinc-900 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleSaveTaskDetails()}
+                      disabled={savingTask}
+                      className="px-4 py-1.5 text-xs font-semibold bg-white text-black rounded-xl hover:bg-zinc-200 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save Description
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => canManage && setIsEditingDesc(true)}
+                  className="p-4 bg-zinc-900/40 border border-white/5 rounded-2xl text-xs text-zinc-300 leading-relaxed whitespace-pre-line cursor-pointer hover:border-white/15 transition-all"
+                >
+                  {description || 'No detailed description provided. Click to add details.'}
+                </div>
+              )}
             </div>
 
-            {/* Tabs Selector: Comments vs File Attachments */}
+            {/* Tabs Selector: Subtasks vs Comments vs Attachments */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-4 border-b border-white/10 pb-2">
+                
+                {/* Tab: Subtasks */}
+                <button
+                  onClick={() => setActiveTab('subtasks')}
+                  className={`text-xs font-bold flex items-center gap-2 pb-2 -mb-2.5 transition-all cursor-pointer ${
+                    activeTab === 'subtasks'
+                      ? 'text-white border-b-2 border-white'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  <span>Subtasks ({subtasks.length})</span>
+                </button>
+
+                {/* Tab: Discussion */}
                 <button
                   onClick={() => setActiveTab('comments')}
                   className={`text-xs font-bold flex items-center gap-2 pb-2 -mb-2.5 transition-all cursor-pointer ${
@@ -277,6 +624,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                   <span>Discussion ({comments.length})</span>
                 </button>
 
+                {/* Tab: Files */}
                 <button
                   onClick={() => setActiveTab('attachments')}
                   className={`text-xs font-bold flex items-center gap-2 pb-2 -mb-2.5 transition-all cursor-pointer ${
@@ -290,7 +638,113 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                 </button>
               </div>
 
-              {/* TAB 1: COMMENTS THREAD */}
+              {/* ============================================================== */}
+              {/* TAB 1: SUBTASKS CHECKLIST WITH PROGRESS BAR */}
+              {/* ============================================================== */}
+              {activeTab === 'subtasks' && (
+                <div className="space-y-4">
+                  
+                  {/* Subtask Progress Bar */}
+                  {subtasks.length > 0 && (
+                    <div className="p-3 bg-zinc-900/60 border border-white/10 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-zinc-300">Checklist Progress</span>
+                        <span className="text-zinc-400 font-bold">
+                          {completedSubtasksCount} of {subtasks.length} ({subtasksPercent}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${subtasksPercent}%` }}
+                          transition={{ duration: 0.4 }}
+                          className={`h-full rounded-full ${
+                            subtasksPercent === 100 ? 'bg-emerald-400' : 'bg-indigo-400'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add Subtask Input Form */}
+                  {canManage && (
+                    <form onSubmit={handleAddSubtask} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        placeholder="Add a new subtask..."
+                        className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                      />
+                      <button
+                        type="submit"
+                        disabled={addingSubtask || !newSubtaskTitle.trim()}
+                        className="bg-white text-black font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-zinc-200 transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add</span>
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Subtasks List */}
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {loadingSubtasks ? (
+                      <p className="text-xs text-zinc-500 text-center py-4">Loading subtasks...</p>
+                    ) : subtasks.length === 0 ? (
+                      <div className="text-center py-8 border border-dashed border-white/5 rounded-2xl space-y-1">
+                        <CheckSquare className="w-6 h-6 text-zinc-600 mx-auto mb-1" />
+                        <p className="text-xs text-zinc-400 font-semibold">No subtasks yet</p>
+                        <p className="text-[10px] text-zinc-500">Break this task into smaller manageable checklist items.</p>
+                      </div>
+                    ) : (
+                      subtasks.map((st) => {
+                        const isDone = st.status === 'done';
+                        return (
+                          <div
+                            key={st.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                              isDone
+                                ? 'bg-zinc-900/30 border-white/5 text-zinc-500'
+                                : 'bg-zinc-900/70 border-white/10 text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden flex-1">
+                              <button
+                                onClick={() => handleToggleSubtask(st.id, st.status)}
+                                className="cursor-pointer text-zinc-400 hover:text-white transition-colors"
+                              >
+                                {isDone ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                ) : (
+                                  <Circle className="w-4 h-4 text-zinc-500" />
+                                )}
+                              </button>
+                              <span className={`text-xs font-medium truncate ${isDone ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>
+                                {st.title}
+                              </span>
+                            </div>
+
+                            {canManage && (
+                              <button
+                                onClick={() => handleDeleteSubtask(st.id)}
+                                className="text-zinc-500 hover:text-red-400 p-1 transition-colors cursor-pointer ml-2"
+                                title="Delete subtask"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ============================================================== */}
+              {/* TAB 2: COMMENTS THREAD */}
+              {/* ============================================================== */}
               {activeTab === 'comments' && (
                 <div className="space-y-4">
                   {/* Comments List */}
@@ -307,7 +761,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <img
-                                src={c.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.user_name || 'User')}`}
+                                src={getAvatarFor({ name: c.user_name, avatar_url: c.user_avatar }, c.user_role)}
                                 alt={c.user_name}
                                 className="w-6 h-6 rounded-full bg-zinc-800 border border-white/10"
                               />
@@ -357,7 +811,9 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                 </div>
               )}
 
-              {/* TAB 2: FILE ATTACHMENTS */}
+              {/* ============================================================== */}
+              {/* TAB 3: FILE ATTACHMENTS */}
+              {/* ============================================================== */}
               {activeTab === 'attachments' && (
                 <div className="space-y-4">
                   {/* File Upload Dropzone */}

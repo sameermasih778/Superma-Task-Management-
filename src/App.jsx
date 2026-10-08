@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/toast/ToastProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import MemberRoute from './components/MemberRoute';
 
 import Navbar from './components/Navbar';
 import AdminNavbar from './components/AdminNavbar';
@@ -19,6 +21,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import LoginPage from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Authenticated Dashboard Pages
 import DashboardLayout from './components/dashboard/DashboardLayout';
@@ -27,6 +30,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import ActivityPage from './pages/ActivityPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -45,9 +49,8 @@ function MainLayout() {
   const isDashboardRoute = location.pathname.startsWith('/dashboard');
   const isAdminLoginRoute = location.pathname.startsWith('/admin-login') || location.pathname.startsWith('/staff-portal');
 
-  // Check if current user is Admin or Developer
-  const activeLoginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
-  const isStaffOrAdmin = activeLoginType === 'admin' || ['super_admin', 'admin', 'developer'].includes(user?.role);
+  // Check if current user is Admin or Developer based on actual role
+  const isStaffOrAdmin = ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   // Navbar Rendering Rules:
   // 1. On Admin Login page (/admin-login, /staff-portal): render <AdminNavbar />
@@ -93,13 +96,17 @@ function MainLayout() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<DashboardOverview />} />
+              {/* Profile is member-only: staff use a fixed role emblem */}
+              <Route element={<MemberRoute />}>
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="teams" element={<TeamsPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="users" element={<AdminUsersPage />} />
               </Route>
-              <Route path="activity" element={<DashboardOverview />} />
+              <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>
         </Routes>
@@ -111,11 +118,15 @@ function MainLayout() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <MainLayout />
-      </Router>
-    </AuthProvider>
+    // ToastProvider sits outside AuthProvider and Router so a toast can be
+    // raised from anywhere - including auth failures and the 404 page.
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <MainLayout />
+        </Router>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

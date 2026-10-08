@@ -14,8 +14,7 @@ const STAFF_ROLES = ['super_admin', 'admin', 'developer'];
 export default function AdminRoute() {
   const { isAuthenticated, loading, user } = useAuth();
 
-  const loginType = sessionStorage.getItem('suprema_login_type') || localStorage.getItem('suprema_last_login_type');
-  const isStaff = loginType === 'admin' || STAFF_ROLES.includes(user?.role);
+  const isStaff = STAFF_ROLES.includes(user?.role);
 
   if (loading) {
     return (

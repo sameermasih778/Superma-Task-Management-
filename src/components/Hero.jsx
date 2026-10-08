@@ -3,10 +3,29 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Info, Zap, Command, Layers, SlidersHorizontal, User, CheckCircle2, MoreHorizontal, ChevronDown, ListFilter, CornerDownRight } from 'lucide-react';
 import LogoStrip from './LogoStrip';
 import smallLogo from '../assets/small logo.svg';
+import usePublicNavOffset from '../hooks/usePublicNavOffset';
+
+// The floating cards use negative top offsets to create the "peeking" effect
+// (see the `-top-3` / `-top-4` classes below). Those cards are positioned
+// relative to this section's content box, so they start CARD_OVERHANG_PX ABOVE
+// where the content begins. If the section only clears the Navbar by less than
+// that, the cards slide up underneath the Navbar and get clipped by it.
+//
+// Keep this in sync if the card offsets below are changed.
+const CARD_OVERHANG_PX = 16; // -top-4
+const NAVBAR_GAP_PX = 12; // breathing room below the Navbar
 
 export default function Hero() {
+  // The public Navbar is fixed and overlays this section. Measure its real
+  // height instead of relying on pt-24/sm:pt-28/md:pt-32, which only cleared
+  // it by ~12px at one width and would collide at others.
+  const navOffset = usePublicNavOffset();
+
   return (
-    <section className="relative pt-24 sm:pt-28 md:pt-32 pb-6 md:pb-10 overflow-hidden bg-black text-white min-h-[95vh] flex flex-col justify-between">
+    <section
+      style={{ paddingTop: navOffset ? navOffset + CARD_OVERHANG_PX + NAVBAR_GAP_PX : undefined }}
+      className="relative pt-24 sm:pt-28 md:pt-32 pb-6 md:pb-10 overflow-hidden bg-black text-white min-h-[95vh] flex flex-col justify-between"
+    >
       {/* Background Dot Grid */}
       <div 
         className="absolute inset-0 opacity-20 pointer-events-none"

@@ -1,0 +1,323 @@
+import React, { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  User, Mail, Shield, Building2, Upload, Trash2, Image as ImageIcon,
+  Loader2, ArrowLeft, ShieldCheck, RotateCcw, Lock
+} from 'lucide-react';
+import api from '../utils/api';
+import { useToast } from '../components/toast/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import { getAvatarUrl, canUploadAvatar, isStaffRole } from '../utils/avatar';
+
+const MAX_BYTES = 2 * 1024 * 1024;
+const ACCEPTED = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+
+const ROLE_LABELS = {
+  super_admin: 'Super Admin',
+  admin: 'Administrator',
+  developer: 'Developer',
+  member: 'Member',
+  viewer: 'Viewer'
+};
+
+function initials(name) {
+  return (name || '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('');
+}
+
+export default function ProfilePage() {
+  const { user, activeWorkspace } = useAuth();
+  const toast = useToast();
+
+  const fileInputRef = useRef(null);
+  const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  // Object URLs must be revoked or the blob stays in memory for the session.
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  // Staff accounts are shown a fixed role emblem and cannot upload a photo.
+  const isStaff = isStaffRole(user?.role);
+  const uploadsAllowed = canUploadAvatar(user?.role);
+
+  const storedAvatar = isStaff ? null : user?.avatar_url || null;
+  const displaySrc = preview || getAvatarUrl(user);
+
+  const handleFile = (file) => {
+    if (!file) return;
+
+    if (!ACCEPTED.includes(file.type)) {
+      toast.error(`${file.name} is not a supported image. Use PNG, JPEG, GIF or WEBP.`);
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      toast.error(`That image is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is 2MB.`);
+      return;
+    }
+
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(URL.createObjectURL(file));
+    setSelectedFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append('avatar', selectedFile);
+
+    try {
+      // Content-Type is intentionally omitted so the browser sets the
+      // multipart boundary itself (see utils/api.js).
+      const res = await api.post('/auth/avatar', formData);
+
+      // Update the session copy so the sidebar/header reflect the new picture
+      // without needing a full re-login.
+      const raw = localStorage.getItem('suprema_user');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          parsed.avatar_url = res.avatar_url;
+          localStorage.setItem('suprema_user', JSON.stringify(parsed));
+        } catch { /* session copy is advisory only */ }
+      }
+
+      setSelectedFile(null);
+      setPreview(null);
+      toast.success('Profile picture updated');
+      // Re-fetch /auth/me so AuthContext state is authoritative.
+      window.dispatchEvent(new Event('suprema:profile-updated'));
+    } catch (err) {
+      toast.error(err.message || 'Could not upload that image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setRemoving(true);
+    try {
+      await api.delete('/auth/avatar');
+
+      const raw = localStorage.getItem('suprema_user');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          parsed.avatar_url = null;
+          localStorage.setItem('suprema_user', JSON.stringify(parsed));
+        } catch { /* ignore */ }
+      }
+
+      setSelectedFile(null);
+      setPreview(null);
+      if (preview) URL.revokeObjectURL(preview);
+      setPreview(null);
+      toast.success('Profile picture removed');
+      window.dispatchEvent(new Event('suprema:profile-updated'));
+    } catch (err) {
+      toast.error(err.message || 'Could not remove the picture');
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    handleFile(e.dataTransfer.files?.[0]);
+  };
+
+  const hasStoredUpload = storedAvatar?.startsWith('/uploads/avatars/');
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-white">
+            <User className="h-6 w-6 text-indigo-400" />
+            Profile Settings
+          </h1>
+          <p className="mt-1 text-xs text-zinc-500">
+            Your account details and profile picture.
+          </p>
+        </div>
+        <Link
+          to="/dashboard"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-zinc-400 transition-colors hover:text-white"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </Link>
+      </div>
+
+      {/* Guarded by MemberRoute for staff; the branch below is a safety net. */}
+      <section className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-3">
+            <div
+              onDragOver={uploadsAllowed ? (e) => { e.preventDefault(); setDragging(true); } : undefined}
+              onDragLeave={uploadsAllowed ? () => setDragging(false) : undefined}
+              onDrop={uploadsAllowed ? handleDrop : undefined}
+              className={`relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-2 transition-colors ${
+                dragging && uploadsAllowed ? 'border-indigo-400' : 'border-white/10'
+              }`}
+            >
+              {displaySrc ? (
+                <img
+                  src={displaySrc}
+                  alt={user?.name || 'Profile'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-2xl font-black text-white">
+                  {initials(user?.name)}
+                </span>
+              )}
+
+              {selectedFile && (
+                <span className="absolute inset-x-0 bottom-0 bg-black/80 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide text-indigo-300">
+                  Unsaved
+                </span>
+              )}
+
+              {isStaff && (
+                <span className="absolute inset-x-0 bottom-0 bg-black/80 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide text-zinc-300">
+                  {ROLE_LABELS[user?.role] || 'Staff'}
+                </span>
+              )}
+            </div>
+
+            {uploadsAllowed && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED.join(',')}
+                  className="hidden"
+                  onChange={(e) => handleFile(e.target.files?.[0])}
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Choose image
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Details */}
+          <dl className="min-w-0 flex-1 space-y-3">
+            <div>
+              <dt className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                <User className="h-3 w-3" /> Full name
+              </dt>
+              <dd className="mt-0.5 truncate text-sm font-semibold text-white">
+                {user?.name || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                <Mail className="h-3 w-3" /> Email
+              </dt>
+              <dd className="mt-0.5 truncate text-sm text-zinc-300">{user?.email || '—'}</dd>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              <div>
+                <dt className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <Shield className="h-3 w-3" /> Role
+                </dt>
+                <dd className="mt-0.5 text-sm text-zinc-300">
+                  {ROLE_LABELS[user?.role] || user?.role || '—'}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <Building2 className="h-3 w-3" /> Workspace
+                </dt>
+                <dd className="mt-0.5 truncate text-sm text-zinc-300">
+                  {activeWorkspace?.name || '—'}
+                </dd>
+              </div>
+            </div>
+          </dl>
+        </div>
+
+        {/* Upload controls */}
+        {/* Upload controls - members and viewers only */}
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-5">
+          {isStaff ? (
+            <p className="flex items-start gap-2 text-[11px] text-zinc-400">
+              <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-indigo-400" />
+              <span>
+                Staff accounts use a fixed role emblem so it is always clear which
+                portal someone is in. Profile pictures are for member and viewer accounts.
+              </span>
+            </p>
+          ) : (
+            <>
+          {selectedFile && (
+            <>
+              <button
+                onClick={handleUpload}
+                disabled={uploading}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                {uploading ? 'Uploading...' : 'Save picture'}
+              </button>
+              <button
+                onClick={() => {
+                  if (preview) URL.revokeObjectURL(preview);
+                  setPreview(null);
+                  setSelectedFile(null);
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-zinc-400 transition-colors hover:text-white"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Discard
+              </button>
+            </>
+          )}
+
+          {hasStoredUpload && !selectedFile && (
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              {removing ? 'Removing...' : 'Remove picture'}
+            </button>
+          )}
+
+          {!selectedFile && !hasStoredUpload && (
+            <p className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              Using a generated avatar. Drop an image above, or browse for one.
+            </p>
+          )}
+            </>
+          )}
+        </div>
+
+        {!isStaff && (
+          <p className="mt-3 text-[10px] text-zinc-600">
+            PNG, JPEG, GIF or WEBP · maximum 2MB. You can also drag an image onto the picture above.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}

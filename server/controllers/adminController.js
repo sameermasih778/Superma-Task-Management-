@@ -242,35 +242,125 @@ const deleteUser = async (req, res, next) => {
 
 /**
  * POST /api/v1/admin/notifications/broadcast
- * Send a global announcement to ALL users (Admin/Super Admin only)
+ * Send an announcement to ALL users, or to specific users.
+ * Admin / Developer / Super Admin only.
+ *
+ * Body:
+ *   title    (required) string
+ *   message  (required) string
+ *   type     (optional) info | task_assigned | mention | system | announcement
+ *   link     (optional) string
+ *   user_ids (optional) array of user IDs. Omit or pass [] to notify everyone.
  */
 const broadcastNotification = async (req, res, next) => {
+  let connection;
+
   try {
-    const { title, message, type = 'announcement' } = req.body;
+    const { title, message, type = 'announcement', link = null, user_ids } = req.body;
 
     if (!title || !message) {
-      return res.status(400).json({ success: false, message: 'Title and message are required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Title and message are required'
+      });
     }
 
-    const [users] = await pool.query('SELECT id FROM users');
-
-    if (users.length === 0) {
-      return res.status(200).json({ success: true, message: 'No users to notify' });
+    // Validate against the real ENUM. Without this, a typo (or the old
+    // hardcoded 'announcement') is silently coerced to '' by MySQL instead of
+    // erroring, because this server runs without STRICT_TRANS_TABLES.
+    const VALID_TYPES = ['info', 'task_assigned', 'mention', 'system', 'announcement'];
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid notification type '${type}'. Valid types: ${VALID_TYPES.join(', ')}`
+      });
     }
 
-    // Bulk insert one notification row per user
-    const values = users.map(u => [u.id, title, message, type, false]);
-    await pool.query(
-      'INSERT INTO notifications (user_id, title, message, type, is_read) VALUES ?',
+    // Normalise the recipient list. Anything that is not a usable integer is
+    // rejected rather than silently dropped, so a malformed id never turns
+    // into a broadcast to everybody by accident.
+    let targetIds = null;
+    if (user_ids !== undefined && user_ids !== null) {
+      if (!Array.isArray(user_ids)) {
+        return res.status(400).json({
+          success: false,
+          message: 'user_ids must be an array of user IDs'
+        });
+      }
+
+      const parsed = user_ids.map(Number);
+      if (parsed.some((id) => !Number.isInteger(id) || id <= 0)) {
+        return res.status(400).json({
+          success: false,
+          message: 'user_ids must contain only positive integer user IDs'
+        });
+      }
+
+      targetIds = [...new Set(parsed)]; // de-duplicate
+    }
+
+    // Resolve recipients, ignoring any ids that do not exist.
+    let recipients;
+    if (targetIds && targetIds.length > 0) {
+      const placeholders = targetIds.map(() => '?').join(',');
+      const [found] = await pool.query(
+        `SELECT id, name, email FROM users WHERE id IN (${placeholders})`,
+        targetIds
+      );
+      recipients = found;
+
+      if (recipients.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'None of the selected users could be found'
+        });
+      }
+    } else {
+      const [all] = await pool.query('SELECT id, name, email FROM users');
+      recipients = all;
+
+      if (recipients.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'No users to notify',
+          recipientCount: 0
+        });
+      }
+    }
+
+    // Insert all rows in one transaction so a partial broadcast is impossible.
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const values = recipients.map((u) => [u.id, title, message, type, false, link]);
+    await connection.query(
+      'INSERT INTO notifications (user_id, title, message, type, is_read, link) VALUES ?',
       [values]
     );
 
+    await connection.commit();
+    connection.release();
+    connection = null;
+
+    const targeted = targetIds && targetIds.length > 0;
+    const missing = targeted ? targetIds.length - recipients.length : 0;
+
     res.status(201).json({
       success: true,
-      message: `Broadcast sent to ${users.length} users`,
-      recipientCount: users.length
+      message: targeted
+        ? `Notification sent to ${recipients.length} user(s)` +
+          (missing > 0 ? ` (${missing} skipped - not found)` : '')
+        : `Broadcast sent to ${recipients.length} users`,
+      recipientCount: recipients.length,
+      scope: targeted ? 'selected' : 'all',
+      recipients: recipients.map((u) => ({ id: u.id, name: u.name, email: u.email })),
+      skippedCount: missing
     });
   } catch (error) {
+    if (connection) {
+      await connection.rollback();
+      connection.release();
+    }
     next(error);
   }
 };

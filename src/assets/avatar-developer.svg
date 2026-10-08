@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Developer">
+  <defs>
+    <linearGradient id="dv-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="55%" stop-color="#065f46"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="32" fill="url(#dv-bg)"/>
+  <circle cx="32" cy="32" r="30.5" fill="none" stroke="#34d399" stroke-opacity="0.5" stroke-width="1.5"/>
+  <!-- Code brackets -->
+  <path d="M24 24 L15 32 L24 40"
+        fill="none" stroke="#d1fae5" stroke-width="3.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 24 L49 32 L40 40"
+        fill="none" stroke="#d1fae5" stroke-width="3.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M35 21 L29 43"
+        fill="none" stroke="#6ee7b7" stroke-width="3.2"
+        stroke-linecap="round"/>
+</svg>

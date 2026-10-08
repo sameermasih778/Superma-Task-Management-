@@ -22,10 +22,18 @@ export default function AdminLoginPage() {
 
     try {
       console.log('[AdminLoginPage] Submitting login for:', email);
-      sessionStorage.setItem('suprema_login_type', 'admin');
-      localStorage.setItem('suprema_last_login_type', 'admin');
       const result = await login(email, password, 'admin');
       console.log('[AdminLoginPage] Login result:', result);
+
+      const staffRoles = ['super_admin', 'admin', 'developer'];
+      if (!staffRoles.includes(result?.user?.role)) {
+        sessionStorage.removeItem('suprema_token');
+        sessionStorage.removeItem('suprema_login_type');
+        sessionStorage.removeItem('suprema_active_ws_id');
+        localStorage.removeItem('suprema_token');
+        throw new Error('Access Denied: This portal is strictly restricted to Administrators and Developers. Please use the standard user login.');
+      }
+
       navigate('/dashboard');
     } catch (err) {
       console.error('[AdminLoginPage] Login error:', err);

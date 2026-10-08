@@ -26,7 +26,26 @@ const request = async (endpoint, options = {}) => {
     delete config.headers['Content-Type'];
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, config);
+  let response;
+
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, config);
+  } catch (networkError) {
+    // fetch() rejects for both a dead server AND a CORS rejection. The server
+    // may even have logged a 200 in the CORS case, because the browser throws
+    // the response away after the server has already handled it. Reporting this
+    // as a plain "authentication failed" sent debugging in completely the wrong
+    // direction, so name both possibilities explicitly.
+    const message =
+      'Cannot reach the API server at ' + BASE_URL + '. Either the backend is not ' +
+      'running, or it is blocked by CORS - check that the server is on port 5000 ' +
+      'and that your dev client origin is allowed (CLIENT_ORIGIN).';
+
+    const error = new Error(message);
+    error.isNetworkError = true;
+    error.cause = networkError;
+    throw error;
+  }
 
   const data = await response.json().catch(() => ({}));
 

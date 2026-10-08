@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# User-uploaded files (avatars, task attachments).
+# These are runtime data, not source - committing them bloats the repo and
+# risks publishing someone's profile picture. Keep the folder structure only.
+server/uploads/**
+!server/uploads/.gitkeep
+!server/uploads/avatars/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

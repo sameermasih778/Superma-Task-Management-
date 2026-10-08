@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id INT NOT NULL,
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
-    type ENUM('info', 'task_assigned', 'mention', 'system') NOT NULL DEFAULT 'info',
+    type ENUM('info', 'task_assigned', 'mention', 'system', 'announcement') NOT NULL DEFAULT 'info',
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     link VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Shield, RotateCcw, Trash2, Bell,
-  Search, ChevronDown, X, CheckCircle2,
-  AlertTriangle, Send, UserCog, Crown, Code2,
+  Search, X, CheckCircle2,
+  Send, UserCog, Crown, Code2,
   Eye, User, ShieldAlert, Loader2, UserX, UserCheck
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/toast/ToastContext';
 
 const ROLE_CONFIG = {
   super_admin: { label: 'Super Admin', color: 'text-purple-400 bg-purple-500/15 border-purple-500/30', icon: Crown },
@@ -46,20 +47,55 @@ function StatusBadge({ status }) {
 }
 
 // ─── Broadcast Modal ───────────────────────────────────────────────
-function BroadcastModal({ onClose }) {
+function BroadcastModal({ onClose, users = [], currentUser }) {
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [scope, setScope] = useState('all'); // 'all' | 'user'
+  const [targetId, setTargetId] = useState('');
+  const [userSearch, setUserSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(null);
+
+  // Only active accounts can be notified - a suspended user cannot log in to
+  // read it, and notifying them is misleading.
+  const notifiableUsers = users.filter(
+    u => u.status === 'active' && u.id !== currentUser?.id
+  );
+
+  const matchingUsers = userSearch.trim()
+    ? notifiableUsers.filter(u =>
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase())
+      )
+    : notifiableUsers;
+
+  const selectedUser = notifiableUsers.find(u => String(u.id) === String(targetId));
+  const canSend =
+    title.trim() &&
+    message.trim() &&
+    (scope === 'all' || (scope === 'user' && targetId !== ''));
 
   const handleSend = async () => {
-    if (!title.trim() || !message.trim()) return;
+    if (!canSend) return;
     setLoading(true);
     try {
-      const res = await api.post('/admin/notifications/broadcast', { title, message, type: 'announcement' });
-      setSuccess(res.message);
+      const body = {
+        title: title.trim(),
+        message: message.trim(),
+        type: 'announcement'
+      };
+
+      // Omitting user_ids entirely means "everyone" on the server, so the
+      // broadcast path is unchanged from before.
+      if (scope === 'user') body.user_ids = [Number(targetId)];
+
+      const res = await api.post('/admin/notifications/broadcast', body);
+      // Raise a toast and close, rather than replacing the whole form with a
+      // success banner - the feedback no longer costs the user their input.
+      toast.success(res.message || 'Notification sent');
+      onClose();
     } catch (err) {
-      setSuccess(`Error: ${err.message}`);
+      toast.error(err.message || 'Could not send the notification');
     } finally {
       setLoading(false);
     }
@@ -86,8 +122,8 @@ function BroadcastModal({ onClose }) {
               <Bell className="w-4 h-4 text-orange-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">Broadcast Announcement</h2>
-              <p className="text-[10px] text-zinc-500">Send to all registered users</p>
+              <h2 className="text-sm font-bold text-white">Send Notification</h2>
+              <p className="text-[10px] text-zinc-500">Send to everyone, or one specific user</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
@@ -95,13 +131,94 @@ function BroadcastModal({ onClose }) {
           </button>
         </div>
 
-        {success ? (
-          <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${success.startsWith('Error') ? 'bg-red-500/10 border border-red-500/30 text-red-400' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'}`}>
-            {success.startsWith('Error') ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-            {success}
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
+            {/* Recipients: everyone, or one specific user */}
+            <div>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 block">Send To</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScope('all')}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    scope === 'all'
+                      ? 'bg-orange-500/15 border-orange-500/40 text-orange-300'
+                      : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  All Users ({users.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope('user')}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    scope === 'user'
+                      ? 'bg-orange-500/15 border-orange-500/40 text-orange-300'
+                      : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Specific User
+                </button>
+              </div>
+            </div>
+
+            {scope === 'user' && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    placeholder="Search by name or email..."
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-zinc-900 border border-white/10 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/60 transition-colors"
+                  />
+                </div>
+
+                <div className="max-h-44 overflow-y-auto rounded-xl border border-white/10 bg-zinc-900 divide-y divide-white/5">
+                  {matchingUsers.length === 0 ? (
+                    <p className="p-4 text-center text-[11px] text-zinc-500">
+                      No active users match your search.
+                    </p>
+                  ) : (
+                    matchingUsers.map(u => {
+                      const isSelected = String(u.id) === String(targetId);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => setTargetId(String(u.id))}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                            isSelected ? 'bg-orange-500/10' : 'hover:bg-white/[0.03]'
+                          }`}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-[10px] shrink-0">
+                            {u.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white truncate">
+                              {u.name}
+                              {isSelected && <CheckCircle2 className="inline w-3 h-3 ml-1.5 text-orange-400" />}
+                            </p>
+                            <p className="text-[10px] text-zinc-500 truncate">{u.email}</p>
+                          </div>
+                          <RoleBadge role={u.role} />
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {selectedUser && (
+                  <p className="text-[11px] text-zinc-400">
+                    Will notify <span className="font-semibold text-white">{selectedUser.name}</span>{' '}
+                    <span className="text-zinc-500">({selectedUser.email})</span>
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 block">Title</label>
               <input
@@ -128,15 +245,14 @@ function BroadcastModal({ onClose }) {
               </button>
               <button
                 onClick={handleSend}
-                disabled={loading || !title.trim() || !message.trim()}
+                disabled={loading || !canSend}
                 className="px-4 py-2 text-xs font-bold bg-orange-500 hover:bg-orange-400 text-white rounded-xl flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                {loading ? 'Sending...' : 'Send Broadcast'}
+                {loading ? 'Sending...' : scope === 'all' ? 'Send to All' : 'Send to User'}
               </button>
             </div>
           </div>
-        )}
       </motion.div>
     </motion.div>
   );
@@ -145,20 +261,15 @@ function BroadcastModal({ onClose }) {
 // ─── Main Page ─────────────────────────────────────────────────────
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [toast, setToast] = useState(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [actionLoading, setActionLoading] = useState({}); // { userId_action: true }
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
   const canManageStaff = isSuperAdmin; // only super_admin may touch super_admin accounts
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -166,11 +277,11 @@ export default function AdminUsersPage() {
       const res = await api.get('/admin/users');
       setUsers(res.users || []);
     } catch (err) {
-      showToast(err.message || 'Failed to fetch users', 'error');
+      toast.error(err.message || 'Failed to fetch users');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchUsers();
@@ -182,9 +293,9 @@ export default function AdminUsersPage() {
     try {
       await api.patch(`/admin/users/${userId}/role`, { role: newRole });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      showToast(`Role updated to "${newRole}" successfully`);
+      toast.success(`Role updated to "${newRole}"`);
     } catch (err) {
-      showToast(err.message || 'Role update failed', 'error');
+      toast.error(err.message || 'Role update failed');
     } finally {
       setActionLoading(prev => ({ ...prev, [key]: false }));
     }
@@ -192,7 +303,6 @@ export default function AdminUsersPage() {
 
   const handleToggleStatus = async (userId, userName, currentStatus) => {
     const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const action = nextStatus === 'suspended' ? 'Suspend' : 'Re-activate';
 
     if (!window.confirm(
       nextStatus === 'suspended'
@@ -205,9 +315,9 @@ export default function AdminUsersPage() {
     try {
       const res = await api.patch(`/admin/users/${userId}/status`, { status: nextStatus });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: nextStatus } : u));
-      showToast(res.message || `User ${action.toLowerCase()}d successfully`);
+      toast.success(res.message || 'Status updated');
     } catch (err) {
-      showToast(err.message || 'Status update failed', 'error');
+      toast.error(err.message || 'Status update failed');
     } finally {
       setActionLoading(prev => ({ ...prev, [key]: false }));
     }
@@ -219,9 +329,9 @@ export default function AdminUsersPage() {
     setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
       const res = await api.patch(`/admin/users/${userId}/reset-password`);
-      showToast(res.message || 'Password reset successful');
+      toast.success(res.message || 'Password reset successful');
     } catch (err) {
-      showToast(err.message || 'Password reset failed', 'error');
+      toast.error(err.message || 'Password reset failed');
     } finally {
       setActionLoading(prev => ({ ...prev, [key]: false }));
     }
@@ -234,9 +344,9 @@ export default function AdminUsersPage() {
     try {
       await api.delete(`/admin/users/${userId}`);
       setUsers(prev => prev.filter(u => u.id !== userId));
-      showToast(`User "${userName}" deleted successfully`);
+      toast.success(`User "${userName}" deleted`);
     } catch (err) {
-      showToast(err.message || 'Delete failed', 'error');
+      toast.error(err.message || 'Delete failed');
     } finally {
       setActionLoading(prev => ({ ...prev, [key]: false }));
     }
@@ -250,28 +360,9 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className={`fixed top-20 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-semibold shadow-2xl border backdrop-blur-xl ${
-              toast.type === 'error'
-                ? 'bg-red-500/15 border-red-500/30 text-red-300'
-                : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-            }`}
-          >
-            {toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-            {toast.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Broadcast Modal */}
       <AnimatePresence>
-        {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
+        {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} users={users} currentUser={currentUser} />}
       </AnimatePresence>
 
       {/* Page Header */}
@@ -290,7 +381,7 @@ export default function AdminUsersPage() {
           className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 text-orange-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
         >
           <Bell className="w-4 h-4" />
-          Broadcast Announcement
+          Send Notification
         </button>
       </div>
 

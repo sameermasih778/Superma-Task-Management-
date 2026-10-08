@@ -129,9 +129,9 @@ const addWorkspaceMember = async (req, res, next) => {
     }
 
     // Find user by email
-    const [users] = await pool.query('SELECT id, name, email FROM users WHERE email = ?', [email]);
+    const [users] = await pool.query('SELECT id, name, email FROM users WHERE email = ?', [email.trim().toLowerCase()]);
     if (users.length === 0) {
-      return res.status(444).json({
+      return res.status(404).json({
         success: false,
         message: 'User Error: User with provided email does not exist'
       });
@@ -157,6 +157,21 @@ const addWorkspaceMember = async (req, res, next) => {
       [workspaceId, targetUser.id, role]
     );
 
+    // Log activity
+    const { logActivity } = require('../utils/activityLogger');
+    await logActivity({
+      workspace_id: workspaceId,
+      user_id: req.user.id,
+      action: 'MEMBER_JOINED',
+      entity_type: 'workspace',
+      entity_id: workspaceId,
+      details: {
+        member_name: targetUser.name,
+        member_email: targetUser.email,
+        role
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: `${targetUser.name} added to workspace successfully`,
@@ -164,7 +179,8 @@ const addWorkspaceMember = async (req, res, next) => {
         id: targetUser.id,
         name: targetUser.name,
         email: targetUser.email,
-        role
+        workspace_role: role,
+        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(targetUser.name)}`
       }
     });
 

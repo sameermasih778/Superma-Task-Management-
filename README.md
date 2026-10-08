@@ -80,7 +80,17 @@ JWT_SECRET=change_this_to_a_long_random_string
 npm run db:init
 ```
 
-This **drops and recreates** `suprema_db`, then runs `schema.sql` and `seed.sql`. Any existing data in that database is lost.
+This **drops and recreates** `suprema_db`, then runs `schema.sql` and `seed.sql`. It is only needed once, on a fresh setup.
+
+> **⚠️ This deletes every account.** It runs `DROP DATABASE`, so any user who registered through the UI is permanently removed. Running it as part of your normal startup is the single most common cause of "my account disappeared and can't log in" — and the admin panel will not list the user either, because the row genuinely no longer exists.
+>
+> `db:init` now refuses to run when the database already contains users, and tells you to use `npm run dev` instead. If you genuinely want a clean slate, ask for it explicitly:
+>
+> ```bash
+> npm run db:reset        # destructive, on purpose
+> ```
+>
+> To just restart the app afterwards, you only need `npm run dev` — the schema migrates itself on boot.
 
 ### 4. Run both servers
 
@@ -130,7 +140,8 @@ Run from the **root** directory:
 | `npm run dev:client` | Start only the Vite dev server |
 | `npm run dev:server` | Start only the Express API (nodemon) |
 | `npm run start:server` | Start the API without nodemon |
-| `npm run db:init` | **Destructive.** Drop, recreate, schema, and seed the database |
+| `npm run db:init` | Create and seed the database. **Refuses to run if the database already has users** |
+| `npm run db:reset` | Deliberately drop, recreate, and seed — **destroys all registered accounts** |
 | `npm run db:migrate` | Apply pending additive schema migrations (safe) |
 | `npm run build` | Production build of the client into `dist/` |
 | `npm run preview` | Preview the production build |
@@ -189,8 +200,76 @@ Visible to `super_admin`, `admin`, and `developer`. Supports:
 - changing roles
 - resetting a password (a temporary one is emailed, or printed to the server console without SMTP)
 - **suspending / reactivating** an account
-- broadcasting an announcement to all users
+- broadcasting an announcement to everyone, or to a specific user
 - deleting a user — **super_admin only**
+
+### Profile pictures
+
+**Staff accounts (`super_admin`, `admin`, `developer`) use a fixed role emblem** and cannot upload a photo. The emblem is chosen by the *system* role, so a developer who merely owns a workspace is still treated as staff. It also makes it obvious at a glance which portal someone is in. Their sidebar shows no **My Profile** link, and `/dashboard/profile` is blocked for them by `MemberRoute.jsx`.
+
+**Members and viewers** get a neutral placeholder badge until they upload something. Upload is at **Dashboard → My Profile**, or by clicking your own name in the sidebar footer.
+
+| | |
+| --- | --- |
+| Formats | PNG, JPEG, GIF, WEBP |
+| Max size | 2MB |
+| Endpoints | `POST /auth/avatar` (multipart, field `avatar`), `DELETE /auth/avatar` |
+
+`src/utils/avatar.js` exposes `getAvatarUrl(user)`, `getAvatarFor(person, roleKey)`, `isStaffRole(role)` and `canUploadAvatar(role)`. Every avatar in the app goes through it, so the emblem-vs-photo decision is made in exactly one place.
+
+All four badges are local SVGs in `src/assets/` — there is no third-party avatar API, so avatars render identically offline and cannot leak account information to an external service.
+
+The staff restriction is enforced **server-side** in `authController.js` — hiding the upload controls in the UI is only a convenience, and a direct API call would otherwise still succeed.
+
+| | |
+| --- | --- |
+| Formats | PNG, JPEG, GIF, WEBP |
+| Max size | 2MB |
+| Endpoints | `POST /auth/avatar` (multipart, field `avatar`), `DELETE /auth/avatar` |
+
+Validation happens in three layers, because the first two are attacker-controlled:
+
+1. declared MIME type — client supplied, trivially forged
+2. file extension — must match that MIME type
+3. **magic bytes** — the real leading bytes of the file on disk are compared against the signature for the claimed format, which is what catches an HTML or SVG payload renamed to `.png`
+
+Files are ignored by git. Note that local-disk storage will not survive an ephemeral host such as Vercel — use object storage (S3/Cloudinary) for a real deployment.
+
+### Toasts
+
+Action feedback uses a shared toast system (`src/components/toast/`), available anywhere via `useToast()`:
+
+```js
+const toast = useToast();
+toast.success('Role updated to "developer"');
+toast.error(err.message);
+toast.info('Workspace switched');
+toast.warning('This cannot be undone');
+```
+
+Toasts and the bell dropdown are deliberately different: a **toast** is immediate, transient feedback about an action just taken, while the **bell** is a durable inbox of messages still waiting to be read. Replacing one with the other would silently lose messages the user never saw.
+
+### Dashboards
+
+Each role gets a genuinely different dashboard, all composed from the shared primitives in `src/components/dashboard/DashboardShell.jsx` so they still read as one product. Routing is driven purely by the role on the JWT, never by client state.
+
+| Role | Dashboard | Accent | Answers |
+| --- | --- | --- | --- |
+| `member` / `viewer` | `MemberDashboard.jsx` | indigo | "What is mine?" — my queue, overdue, my projects |
+| `developer` | `DeveloperDashboard.jsx` | emerald | "What is the board doing?" — pipeline, throughput, workload |
+| `admin` / `super_admin` | `AdminDashboard.jsx` | amber | "Is the platform healthy?" — health, users, audit trail |
+
+Accents are defined once in `src/components/dashboard/accents.js` and applied as CSS custom properties, so a role's entire palette can be re-themed from one file. Shared data loading lives in `src/hooks/useDashboardData.js`.
+
+The admin dashboard's **System health** panel reads `GET /health`, which performs a live `SELECT 1` — it reports real `CONNECTED` / `DISCONNECTED` state plus actual uptime and environment rather than a hardcoded string.
+
+### The "New Task" button
+
+The header's **New Task** button works from every dashboard page, not just the Tasks Board. The modal is rendered by `DashboardLayout` (not by `TasksPage`), because it used to exist only on the board — so clicking the button from Overview set state that nothing was listening to and appeared to do nothing.
+
+- Opened from the **header** → no project in context, so the modal shows a **Project** selector.
+- Opened from a **task row** → the project is pre-selected and the selector is hidden.
+- **Edit** opens the same modal pre-filled, driven by `editingTask` state lifted into `DashboardLayout` and shared through outlet context.
 
 ### Guards
 
@@ -220,6 +299,8 @@ All routes require `Authorization: Bearer <token>` except registration, login, a
 | `POST` | `/auth/register` | Register directly (no OTP) |
 | `POST` | `/auth/login` | Log in, returns a JWT |
 | `GET` | `/auth/me` | Current user + workspaces |
+| `POST` | `/auth/avatar` | Upload profile picture (members/viewers only) |
+| `DELETE` | `/auth/avatar` | Remove profile picture |
 
 ### Workspaces & Teams
 
@@ -273,6 +354,28 @@ All routes require `Authorization: Bearer <token>` except registration, login, a
 | `PATCH` | `/admin/users/:id/reset-password` | admin |
 | `DELETE` | `/admin/users/:id` | **super_admin** |
 | `POST` | `/admin/notifications/broadcast` | admin |
+
+#### Sending notifications
+
+`POST /admin/notifications/broadcast` supports both recipients in one endpoint:
+
+```jsonc
+// everyone (omit user_ids, or pass [])
+{ "title": "Maintenance tonight", "message": "Downtime 10pm-11pm", "type": "announcement" }
+
+// one or more specific users
+{ "title": "Please review", "message": "Task 42 is assigned to you", "type": "task_assigned", "user_ids": [4, 7] }
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `title` | yes | max 200 chars |
+| `message` | yes | |
+| `type` | no | `info` (default) · `task_assigned` · `mention` · `system` · `announcement` |
+| `link` | no | optional deep link |
+| `user_ids` | no | array of user IDs. Omit or pass `[]` to notify **everyone** |
+
+Unknown `user_ids` are skipped rather than failing the whole send, and the response reports what was skipped. Rows are inserted in a single transaction, so a partial broadcast is not possible.
 
 ### Health
 
