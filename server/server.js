@@ -62,7 +62,26 @@ app.use(cors({
 app.use('/api/', apiLimiter);
 
 // Static Uploads Serving
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+//
+// The frontend and the API are served from DIFFERENT origins by design
+// (localhost:5173 vs localhost:5000 in dev, and two separate *.vercel.app
+// hosts in production). Helmet's default `Cross-Origin-Resource-Policy:
+// same-origin` therefore makes browsers refuse to render uploaded avatars and
+// attachments at all - the file downloads with HTTP 200 but paints as a 0x0
+// broken image.
+//
+// CORP only controls whether another origin may EMBED a resource; it is not an
+// access control. Relaxing it for this static route changes nothing about who
+// can read data through the API, which stays protected by JWT auth and the
+// CLIENT_ORIGIN allowlist.
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.join(__dirname, 'uploads'))
+);
 
 // Parsing Middlewares
 app.use(express.json({ limit: '10mb' }));

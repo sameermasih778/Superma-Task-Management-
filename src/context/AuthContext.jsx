@@ -3,11 +3,86 @@ import api from '../utils/api';
 
 const AuthContext = createContext();
 
+/**
+ * Cached session, kept in localStorage so a page refresh renders the signed-in
+ * UI immediately instead of flashing the signed-out navbar.
+ *
+ * This is a rendering optimisation, never an authority: every protected request
+ * still carries the JWT and the server re-validates it. The only local decision
+ * is "is the token past its `exp`?", so an expired session can never be shown
+ * as signed in.
+ */
+const USER_CACHE_KEY = 'suprema_user';
+const WORKSPACE_CACHE_KEY = 'suprema_active_ws';
+
+/** Read a JWT payload without verifying it - `exp` only. */
+function tokenExpiresAt(storedToken) {
+  try {
+    const base64 = storedToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null; // unreadable payload - let the server decide
+  }
+}
+
+function isTokenLive(storedToken) {
+  if (!storedToken) return false;
+  const expiresAt = tokenExpiresAt(storedToken);
+  return expiresAt === null || expiresAt > Date.now();
+}
+
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Synchronous session bootstrap.
+ *
+ * Without this the provider starts every page load as "logged out" and only
+ * learns the truth once /auth/me resolves. That produced two visible glitches on
+ * every refresh: the navbar flashed "Sign In" before flipping to "Sign Out",
+ * and protected routes flashed the "Authenticating Suprema Session..." screen.
+ */
+function readCachedSession() {
+  const storedToken =
+    sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token') || null;
+
+  if (!isTokenLive(storedToken)) {
+    return { token: storedToken, user: null, activeWorkspace: null };
+  }
+
+  return {
+    token: storedToken,
+    user: readJson(USER_CACHE_KEY),
+    activeWorkspace: readJson(WORKSPACE_CACHE_KEY)
+  };
+}
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token') || null);
-  const [activeWorkspace, setActiveWorkspace] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(() => readCachedSession().token);
+  const [user, setUser] = useState(() => readCachedSession().user);
+  const [activeWorkspace, setActiveWorkspace] = useState(() => readCachedSession().activeWorkspace);
+  // Nothing to wait for when a cached profile exists: render it now, then let
+  // the background revalidation below keep it fresh.
+  const [loading, setLoading] = useState(() => !readCachedSession().user);
+
+  /** Persist the profile so the next load can paint the signed-in UI at once. */
+  const cacheProfile = (userData, workspace = null) => {
+    if (!userData) return;
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userData));
+      if (workspace) localStorage.setItem(WORKSPACE_CACHE_KEY, JSON.stringify(workspace));
+    } catch {
+      // Private mode / quota exceeded - the session still works, it just will
+      // not survive a refresh without the flicker.
+    }
+  };
 
   // Helper to persist session & tab-isolated login type
   const persistSession = (authToken, userData, loginType = null) => {
@@ -15,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem('suprema_token', authToken);
       localStorage.setItem('suprema_token', authToken);
     }
-    
+
     // Priority:
     // 1. Explicit loginType parameter ('admin' | 'user')
     // 2. User's role from server data ('super_admin', 'admin', 'developer' -> 'admin')
@@ -30,27 +105,60 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('suprema_last_login_type', effectiveType);
   };
 
-  // Initial Auth Verification on Page Load
+  /** Shared tail for every successful auth call: pick workspace, cache profile. */
+  const adoptSession = (authToken, userData) => {
+    setToken(authToken);
+    setUser(userData);
+
+    let workspace = null;
+    if (userData?.workspaces && userData.workspaces.length > 0) {
+      workspace = userData.workspaces[0];
+      setActiveWorkspace(workspace);
+      sessionStorage.setItem('suprema_active_ws_id', workspace.id);
+      localStorage.setItem('suprema_active_ws_id', workspace.id);
+    }
+
+    cacheProfile(userData, workspace);
+    setLoading(false);
+  };
+
+  // Initial Auth Verification on Page Load.
+  // Runs after the first paint, so it only refreshes data - it no longer gates
+  // what the user sees.
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
-      if (storedToken) {
-        try {
-          const data = await api.get('/auth/me');
-          if (data.success && data.user) {
-            setUser(data.user);
-            persistSession(storedToken, data.user);
-            // Default active workspace to first workspace
-            if (data.user.workspaces && data.user.workspaces.length > 0) {
-              const savedWsId = sessionStorage.getItem('suprema_active_ws_id') || localStorage.getItem('suprema_active_ws_id');
-              const foundWs = data.user.workspaces.find(w => w.id === parseInt(savedWsId, 10));
-              setActiveWorkspace(foundWs || data.user.workspaces[0]);
-            }
+      const storedToken =
+        sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
+
+      if (!isTokenLive(storedToken)) {
+        // Expired or missing: clear it now instead of rendering a stale session.
+        if (storedToken) logout();
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await api.get('/auth/me');
+        if (data.success && data.user) {
+          setUser(data.user);
+          persistSession(storedToken, data.user);
+
+          // Keep the workspace the user last chose, else default to the first.
+          let workspace = readJson(WORKSPACE_CACHE_KEY);
+          if (data.user.workspaces && data.user.workspaces.length > 0) {
+            const savedWsId =
+              sessionStorage.getItem('suprema_active_ws_id') ||
+              localStorage.getItem('suprema_active_ws_id');
+            workspace =
+              data.user.workspaces.find((w) => w.id === parseInt(savedWsId, 10)) ||
+              data.user.workspaces[0];
+            setActiveWorkspace(workspace);
           }
-        } catch (err) {
-          console.warn('Auth Session Expired or Invalid Token:', err.message);
-          logout();
+          cacheProfile(data.user, workspace);
         }
+      } catch (err) {
+        console.warn('Auth Session Expired or Invalid Token:', err.message);
+        logout();
       }
       setLoading(false);
     };
@@ -65,12 +173,16 @@ export const AuthProvider = ({ children }) => {
    */
   useEffect(() => {
     const refresh = async () => {
-      const storedToken = sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
-      if (!storedToken) return;
+      const storedToken =
+        sessionStorage.getItem('suprema_token') || localStorage.getItem('suprema_token');
+      if (!isTokenLive(storedToken)) return;
 
       try {
         const data = await api.get('/auth/me');
-        if (data.success && data.user) setUser(data.user);
+        if (data.success && data.user) {
+          setUser(data.user);
+          cacheProfile(data.user, readJson(WORKSPACE_CACHE_KEY));
+        }
       } catch (err) {
         console.warn('Could not refresh profile:', err.message);
       }
@@ -81,23 +193,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password, explicitLoginType = null) => {
-    console.log('[AuthContext] Attempting login for:', email, 'portal:', explicitLoginType);
     const data = await api.post('/auth/login', {
       email,
       password,
       portal: explicitLoginType
     });
-    console.log('[AuthContext] Login response:', data);
     if (data.success && data.token) {
-      setToken(data.token);
-      setUser(data.user);
       persistSession(data.token, data.user, explicitLoginType);
-      if (data.user.workspaces && data.user.workspaces.length > 0) {
-        setActiveWorkspace(data.user.workspaces[0]);
-        sessionStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-        localStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-      }
-      console.log('[AuthContext] Login successful, user set:', data.user.name);
+      adoptSession(data.token, data.user);
       return data;
     }
     throw new Error(data.message || 'Login failed: Unexpected response from server');
@@ -110,14 +213,8 @@ export const AuthProvider = ({ children }) => {
   const verifyOtp = async (name, email, password, otp) => {
     const data = await api.post('/auth/verify-otp', { name, email, password, otp });
     if (data.success && data.token) {
-      setToken(data.token);
-      setUser(data.user);
       persistSession(data.token, data.user, 'user');
-      if (data.user.workspaces && data.user.workspaces.length > 0) {
-        setActiveWorkspace(data.user.workspaces[0]);
-        sessionStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-        localStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-      }
+      adoptSession(data.token, data.user);
       return data;
     }
   };
@@ -125,14 +222,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     const data = await api.post('/auth/register', { name, email, password });
     if (data.success && data.token) {
-      setToken(data.token);
-      setUser(data.user);
       persistSession(data.token, data.user, 'user');
-      if (data.user.workspaces && data.user.workspaces.length > 0) {
-        setActiveWorkspace(data.user.workspaces[0]);
-        sessionStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-        localStorage.setItem('suprema_active_ws_id', data.user.workspaces[0].id);
-      }
+      adoptSession(data.token, data.user);
       return data;
     }
   };
@@ -149,6 +240,8 @@ export const AuthProvider = ({ children }) => {
 
     localStorage.removeItem('suprema_token');
     localStorage.removeItem('suprema_active_ws_id');
+    localStorage.removeItem(USER_CACHE_KEY);
+    localStorage.removeItem(WORKSPACE_CACHE_KEY);
     localStorage.setItem('suprema_last_login_type', currentLoginType);
 
     setToken(null);
@@ -161,6 +254,11 @@ export const AuthProvider = ({ children }) => {
     if (workspace?.id) {
       sessionStorage.setItem('suprema_active_ws_id', workspace.id);
       localStorage.setItem('suprema_active_ws_id', workspace.id);
+      try {
+        localStorage.setItem(WORKSPACE_CACHE_KEY, JSON.stringify(workspace));
+      } catch {
+        /* storage unavailable - workspace still applies for this tab */
+      }
     }
   };
 

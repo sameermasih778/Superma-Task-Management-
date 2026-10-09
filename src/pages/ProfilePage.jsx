@@ -39,6 +39,10 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // A stored path can outlive its file (cleared disk, migrated to cloud, or a
+  // blocked cross-origin load). Track the failure so the tile falls back to
+  // initials instead of rendering an empty circle.
+  const [imageBroken, setImageBroken] = useState(false);
 
   // Object URLs must be revoked or the blob stays in memory for the session.
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
@@ -49,6 +53,9 @@ export default function ProfilePage() {
 
   const storedAvatar = isStaff ? null : user?.avatar_url || null;
   const displaySrc = preview || getAvatarUrl(user);
+
+  // New picture selected or uploaded -> clear any previous load failure.
+  useEffect(() => { setImageBroken(false); }, [displaySrc]);
 
   const handleFile = (file) => {
     if (!file) return;
@@ -176,11 +183,12 @@ export default function ProfilePage() {
                 dragging && uploadsAllowed ? 'border-indigo-400' : 'border-white/10'
               }`}
             >
-              {displaySrc ? (
+              {displaySrc && !imageBroken ? (
                 <img
                   src={displaySrc}
                   alt={user?.name || 'Profile'}
                   className="h-full w-full object-cover"
+                  onError={() => setImageBroken(true)}
                 />
               ) : (
                 <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-2xl font-black text-white">

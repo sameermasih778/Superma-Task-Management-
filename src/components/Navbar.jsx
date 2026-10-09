@@ -48,7 +48,7 @@ export default function Navbar() {
           </Link>
 
           {/* Center: Segmented Navigation Pills (Desktop) */}
-          <nav className="hidden md:flex items-center bg-zinc-900/90 border border-white/10 rounded-xl p-2">
+          <nav className="hidden md:flex items-center bg-zinc-900/90 border border-white/10 rounded-2xl p-1.5">
             {navItems.map((item) => {
               const isActive =
                 (item.name === 'Home' && location.pathname === '/') ||
@@ -60,14 +60,14 @@ export default function Navbar() {
                   key={item.name}
                   to={item.href}
                   onClick={() => setActiveTab(item.name)}
-                  className={`relative px-5 lg:px-6 py-2 text-base font-medium transition-all rounded-lg ${
+                  className={`relative px-5 lg:px-6 py-2.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activePill"
-                      className="absolute inset-0 bg-zinc-800 rounded-lg border border-white/10 shadow-sm"
+                      className="absolute inset-0 bg-zinc-800 rounded-[10px] border border-white/10 shadow-sm"
                       transition={{ type: 'spring', duration: 0.5 }}
                     />
                   )}
@@ -78,14 +78,14 @@ export default function Navbar() {
                   key={item.name}
                   href={item.href}
                   onClick={() => setActiveTab(item.name)}
-                  className={`relative px-5 lg:px-6 py-2 text-base font-medium transition-all rounded-lg ${
+                  className={`relative px-5 lg:px-6 py-2.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     activeTab === item.name ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   {activeTab === item.name && (
                     <motion.div
                       layoutId="activePill"
-                      className="absolute inset-0 bg-zinc-800 rounded-lg border border-white/10 shadow-sm"
+                      className="absolute inset-0 bg-zinc-800 rounded-[10px] border border-white/10 shadow-sm"
                       transition={{ type: 'spring', duration: 0.5 }}
                     />
                   )}
@@ -99,20 +99,20 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <>
-                {/* Show Dashboard button ONLY when outside dashboard */}
+                {/* Secondary action - shown only outside the app itself */}
                 {!isDashboardRoute && (
                   <Link to="/dashboard" className="hidden md:block">
-                    <button className="px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap flex items-center gap-2 shadow-sm">
+                    <button className="flex items-center justify-center gap-2 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap shadow-sm">
                       <LayoutDashboard className="w-4 h-4 text-indigo-400" />
                       <span>Dashboard</span>
                     </button>
                   </Link>
                 )}
 
-                {/* Sign Out Button */}
+                {/* Sign Out - white button with label, as before */}
                 <button
                   onClick={handleSignOut}
-                  className="hidden md:flex items-center gap-1.5 px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
+                  className="hidden md:flex items-center justify-center gap-1.5 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -121,7 +121,9 @@ export default function Navbar() {
             ) : (
               <>
                 <Link to="/login" className="hidden md:block">
-                  <button className="px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
+                  {/* Identical height/padding to the white Contact us button -
+                      the two CTA buttons must sit on one optical baseline. */}
+                  <button className="flex items-center justify-center h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
                     Sign In
                   </button>
                 </Link>
