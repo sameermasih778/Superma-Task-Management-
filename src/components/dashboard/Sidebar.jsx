@@ -15,7 +15,9 @@ import {
   Globe,
   Shield,
   UserCog,
-  Settings
+  Settings,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
@@ -47,6 +49,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Projects', path: '/dashboard/projects', icon: FolderKanban },
     { label: 'Tasks Board', path: '/dashboard/tasks', icon: CheckSquare },
+    { label: 'Calendar', path: '/dashboard/calendar', icon: Calendar },
+    { label: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
     { label: 'Teams', path: '/dashboard/teams', icon: Users },
     { label: 'Activity Feed', path: '/dashboard/activity', icon: Activity },
     // Staff use a fixed role emblem and have no picture to change, so the

@@ -1,6 +1,6 @@
 const pool = require('../config/db');
-const fs = require('fs');
 const path = require('path');
+const { saveAttachment, removeStoredAsset } = require('../config/assetStorage');
 
 /**
  * POST /api/v1/attachments
@@ -19,12 +19,17 @@ const uploadAttachment = async (req, res, next) => {
       });
     }
 
-    const file_path = `/uploads/${file.filename}`;
+    // Cloudinary when CLOUDINARY_URL is configured (production/Vercel),
+    // local disk otherwise. `publicId` is stored in the filename column so a
+    // later delete can target the exact stored object.
+    const ext = path.extname(file.originalname).toLowerCase();
+    const stored = await saveAttachment(file.buffer, { ext, mime: file.mimetype });
+    const file_path = stored.url;
 
     const [result] = await pool.query(
       `INSERT INTO task_attachments (task_id, user_id, filename, original_name, file_path, file_size, mime_type)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [task_id, userId, file.filename, file.originalname, file_path, file.size, file.mimetype]
+      [task_id, userId, stored.publicId, file.originalname, file_path, file.buffer.length, file.mimetype]
     );
 
     const attachmentId = result.insertId;
@@ -35,7 +40,7 @@ const uploadAttachment = async (req, res, next) => {
       attachment: {
         id: attachmentId,
         task_id,
-        filename: file.filename,
+        filename: stored.publicId,
         original_name: file.originalname,
         file_path,
         file_size: file.size,
@@ -92,7 +97,7 @@ const deleteAttachment = async (req, res, next) => {
   try {
     const attachmentId = req.params.id;
 
-    const [existing] = await pool.query('SELECT filename FROM task_attachments WHERE id = ?', [attachmentId]);
+    const [existing] = await pool.query('SELECT filename, file_path FROM task_attachments WHERE id = ?', [attachmentId]);
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -100,10 +105,12 @@ const deleteAttachment = async (req, res, next) => {
       });
     }
 
-    // Delete file from disk if exists
-    const diskPath = path.join(__dirname, '../uploads', existing[0].filename);
-    if (fs.existsSync(diskPath)) {
-      fs.unlinkSync(diskPath);
+    // Remove the stored object (Cloudinary URL or legacy local file). Cleanup
+    // is best-effort and must never fail the request.
+    try {
+      await removeStoredAsset(existing[0].file_path);
+    } catch (cleanupError) {
+      console.warn('[Attachment] Could not remove stored file:', cleanupError.message);
     }
 
     await pool.query('DELETE FROM task_attachments WHERE id = ?', [attachmentId]);

@@ -64,9 +64,11 @@ CREATE TABLE IF NOT EXISTS teams (
     workspace_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
     description TEXT DEFAULT NULL,
+    created_by INT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
-    INDEX idx_teams_workspace (workspace_id)
+    INDEX idx_teams_workspace (workspace_id),
+    INDEX idx_teams_created_by (created_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. TEAM MEMBERS TABLE

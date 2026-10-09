@@ -1,6 +1,13 @@
 const pool = require('../config/db');
 const { logActivity } = require('../utils/activityLogger');
 
+// Staff (admin/developer/super_admin) may manage every team. Everyone else may
+// only manage the teams they created themselves - without this, any signed-in
+// user could add/remove members from any team in the workspace.
+const STAFF_ROLES = ['super_admin', 'admin', 'developer'];
+const canManageTeam = (req, team) =>
+  STAFF_ROLES.includes(req.user.role) || Number(team.created_by) === Number(req.user.id);
+
 /**
  * GET /api/v1/teams?workspace_id=1
  * Fetch teams inside a workspace
@@ -17,12 +24,42 @@ const getTeams = async (req, res, next) => {
     }
 
     const [teams] = await pool.query(
-      `SELECT t.id, t.workspace_id, t.name, t.description, t.created_at,
+      `SELECT t.id, t.workspace_id, t.name, t.description, t.created_by, t.created_at,
               (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.id) AS member_count
        FROM teams t 
        WHERE t.workspace_id = ? 
        ORDER BY t.created_at DESC`,
       [workspace_id]
+    );
+
+    res.status(200).json({
+      success: true,
+      count: teams.length,
+      teams
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/teams/mine
+ * Teams the current user is a member of, across every workspace they
+ * belong to - not just the active one. This is what makes a team a
+ * member was added to actually show up for them.
+ */
+const getMyTeams = async (req, res, next) => {
+  try {
+    const [teams] = await pool.query(
+      `SELECT t.id, t.workspace_id, w.name AS workspace_name, t.name, t.description,
+              t.created_by, t.created_at, tm.role AS team_role,
+              (SELECT COUNT(*) FROM team_members tm2 WHERE tm2.team_id = t.id) AS member_count
+       FROM team_members tm
+       JOIN teams t ON tm.team_id = t.id
+       JOIN workspaces w ON t.workspace_id = w.id
+       WHERE tm.user_id = ?
+       ORDER BY t.created_at DESC`,
+      [req.user.id]
     );
 
     res.status(200).json({
@@ -52,8 +89,8 @@ const createTeam = async (req, res, next) => {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO teams (workspace_id, name, description) VALUES (?, ?, ?)',
-      [workspace_id, name.trim(), description || null]
+      'INSERT INTO teams (workspace_id, name, description, created_by) VALUES (?, ?, ?, ?)',
+      [workspace_id, name.trim(), description || null, userId]
     );
 
     const teamId = result.insertId;
@@ -135,11 +172,22 @@ const addTeamMember = async (req, res, next) => {
       });
     }
 
-    const [teamRows] = await pool.query('SELECT workspace_id, name FROM teams WHERE id = ?', [teamId]);
+    const [teamRows] = await pool.query(
+      `SELECT t.workspace_id, t.name, t.created_by, w.name AS workspace_name
+       FROM teams t JOIN workspaces w ON t.workspace_id = w.id WHERE t.id = ?`,
+      [teamId]
+    );
     if (teamRows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Team not found'
+      });
+    }
+
+    if (!canManageTeam(req, teamRows[0])) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: you can only add members to teams you created'
       });
     }
 
@@ -159,6 +207,29 @@ const addTeamMember = async (req, res, next) => {
       'INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)',
       [teamId, user_id, role]
     );
+
+    // Notify the member that they were added, including the role they were
+    // given. A failure here must never break the add itself, so it is
+    // deliberately isolated and never throws.
+    if (Number(user_id) !== req.user.id) {
+      try {
+        const [addedUser] = await pool.query('SELECT name FROM users WHERE id = ?', [user_id]);
+        const [actor] = await pool.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
+        const roleLabel = role === 'leader' ? 'Team Leader' : 'Member';
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, is_read, link)
+           VALUES (?, ?, ?, 'system', FALSE, ?)`,
+          [
+            user_id,
+            `Added to team "${teamRows[0].name}"`,
+            `${actor[0]?.name || 'An administrator'} added you to team "${teamRows[0].name}" in workspace "${teamRows[0].workspace_name}" as ${roleLabel}.`,
+            '/dashboard/teams'
+          ]
+        );
+      } catch (notifyErr) {
+        console.warn('Failed to send team-add notification:', notifyErr.message);
+      }
+    }
 
     await logActivity({
       workspace_id: teamRows[0].workspace_id,
@@ -186,11 +257,18 @@ const removeTeamMember = async (req, res, next) => {
   try {
     const { id: teamId, userId } = req.params;
 
-    const [teamRows] = await pool.query('SELECT workspace_id, name FROM teams WHERE id = ?', [teamId]);
+    const [teamRows] = await pool.query('SELECT id, workspace_id, name, created_by FROM teams WHERE id = ?', [teamId]);
     if (teamRows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Team not found'
+      });
+    }
+
+    if (!canManageTeam(req, teamRows[0])) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: you can only remove members from teams you created'
       });
     }
 
@@ -225,11 +303,18 @@ const deleteTeam = async (req, res, next) => {
   try {
     const teamId = req.params.id;
 
-    const [teamRows] = await pool.query('SELECT workspace_id, name FROM teams WHERE id = ?', [teamId]);
+    const [teamRows] = await pool.query('SELECT id, workspace_id, name, created_by FROM teams WHERE id = ?', [teamId]);
     if (teamRows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Team not found'
+      });
+    }
+
+    if (!canManageTeam(req, teamRows[0])) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: you can only delete teams you created'
       });
     }
 
@@ -255,6 +340,7 @@ const deleteTeam = async (req, res, next) => {
 
 module.exports = {
   getTeams,
+  getMyTeams,
   createTeam,
   getTeamMembers,
   addTeamMember,

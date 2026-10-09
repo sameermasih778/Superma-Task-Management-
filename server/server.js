@@ -93,7 +93,9 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
-if (process.env.NODE_ENV !== 'test') {
+// On Vercel the exported app IS the serverless function (VERCEL=1 is set by
+// the platform) - binding a local port there is unnecessary.
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`🚀 Suprema Express Backend Server running on port ${PORT}`);
     console.log(`📡 Environment: [${process.env.NODE_ENV || 'development'}]`);

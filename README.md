@@ -14,6 +14,7 @@ Suprema is two things in one codebase:
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Default Credentials](#default-credentials)
+- [Deploying to Vercel](#deploying-to-vercel)
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
 - [Roles & Permissions](#roles--permissions)
@@ -438,6 +439,17 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=suprema_db
+# true for hosted MySQL providers (Aiven, Railway, ...) - they require TLS
+DB_SSL=false
+# connections per server process - lower it for hosted free tiers
+DB_CONNECTION_LIMIT=10
+# pin every new connection to this sql_mode (unset = server default). Needed
+# on hosted MySQL, which defaults to strict modes this app never ran against:
+# DB_SQL_MODE=IGNORE_SPACE,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION
+
+# REQUIRED in production (Vercel): cloud storage for avatars + attachments.
+# Unset = local dev, files go to server/uploads/.
+CLOUDINARY_URL=
 
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
@@ -461,5 +473,96 @@ VITE_API_URL=http://localhost:5000/api/v1
 ```
 
 > **`JWT_SECRET` has a hardcoded fallback** (`suprema_jwt_super_secret_key_2026_dev_mode`) in the source so local dev works out of the box. This must be set to a real value in any deployed environment, or tokens can be forged.
+
+---
+
+## Deploying to Vercel
+
+The frontend deploys as-is (Vite + `VITE_API_URL`). The backend is a standard
+Express app that already exports its `app`, so Vercel detects it automatically —
+but **two platform constraints must be solved first**, or the deploy "succeeds"
+while the API silently breaks:
+
+1. **MySQL** — Vercel hosts no database. `DB_HOST=localhost` cannot work: point
+   the API at a hosted MySQL and set `DB_SSL=true`.
+2. **File uploads** — Vercel's filesystem is read-only. Whenever
+   `CLOUDINARY_URL` is set, avatars and task attachments are stored on
+   Cloudinary and DB rows hold the absolute URL; without it, files fall back to
+   `server/uploads/` (local development only).
+
+### 1. Hosted MySQL (one-time)
+
+1. Create a free MySQL service — no credit card required:
+   [Aiven for MySQL free tier](https://aiven.io/free-mysql-database)
+   (1 GB, external connections over TLS allowed). Alternatives: Railway, PlanetScale.
+2. Move your local data over:
+   ```bash
+   mysqldump -u root -p suprema_db > suprema-dump.sql
+   mysql --host <DB_HOST> --port <DB_PORT> --user <DB_USER> -p \
+     --ssl-mode=REQUIRED <DB_NAME> < suprema-dump.sql
+   ```
+   (or start empty and run `npm run db:init` inside `server/`)
+3. Put the credentials in `server/.env` with `DB_SSL=true` and run `npm run dev`
+   locally to confirm everything works against the hosted database before deploying.
+
+### 2. Cloudinary for uploads (one-time)
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com) and copy the
+   **Cloudinary URL** from *Settings → API Keys* (`cloudinary://key:secret@cloud`).
+2. Add it to `server/.env` and upload a profile picture locally to verify.
+3. If your database already contains locally stored files, migrate them once:
+   ```bash
+   cd server
+   node scripts/migrate-uploads-to-cloud.js
+   ```
+
+### 3. Deploy the backend
+
+1. Push the repository to GitHub.
+2. [vercel.com/new](https://vercel.com/new) → import the repo → set
+   **Root Directory = `server`** → Deploy. Vercel detects the Express entry point
+   (`server.js`) and needs no `vercel.json`.
+3. Project → **Settings → Environment Variables**, then redeploy:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | from the hosted provider |
+   | `DB_SSL` | `true` |
+   | `DB_CONNECTION_LIMIT` | `5` (free tiers cap total connections) |
+   | `JWT_SECRET` | a long random string — never the dev fallback |
+   | `NODE_ENV` | `production` |
+   | `CLIENT_ORIGIN` | `https://<your-frontend>.vercel.app` (comma-separated for several) |
+   | `CLOUDINARY_URL` | `cloudinary://key:secret@cloud` |
+   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | for OTP emails |
+
+   `server/.env` is **not** committed to git, so these dashboard values are the
+   only copy Vercel will see.
+4. Verify `https://<backend-host>/health` returns `{"status":"UP"}` and that a
+   login round-trip works.
+
+### 4. Point the frontend at the backend
+
+In the **frontend's** Vercel project → Settings → Environment Variables:
+
+```env
+VITE_API_URL=https://<backend-host>/api/v1
+```
+
+then redeploy. The committed root `.env` still contains
+`http://localhost:5000/api/v1`; dashboard variables take precedence over it, but
+if `VITE_API_URL` is never set the deployed site ships with the localhost value.
+
+### Platform limits to know about
+
+- **4.5 MB max request body** on Vercel — the attachment upload cap (10 MB in
+  dev) effectively becomes 4.5 MB in production.
+- The rate limiter is in-memory: counts are per function instance, not global.
+- Aiven's free service powers off after a period of inactivity — wake it from
+  the console (you get an email first).
+- Deploy previews have their own origin; append it to `CLIENT_ORIGIN` if API
+  calls from a preview must work.
+- If Vercel serves the raw source instead of the API, add a `server/vercel.json`
+  with `{"rewrites": [{"source": "/(.*)", "destination": "/server.js"}]}` as the
+  documented fallback.
 
 

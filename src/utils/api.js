@@ -1,5 +1,22 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
+export const API_BASE_URL = BASE_URL;
+
+/**
+ * Resolve a stored asset path to something an <img>/<a href> can load.
+ *
+ * - Absolute URLs (Cloudinary, dicebear, ...) pass through untouched.
+ * - Legacy root-relative paths (/uploads/...) are prefixed with the API
+ *   origin, so older rows keep working when the frontend and backend live on
+ *   different hosts (e.g. both deployed to Vercel).
+ */
+export function assetUrl(value) {
+  if (!value || typeof value !== 'string') return value;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) || value.startsWith('//')) return value;
+  const origin = BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return origin + (value.startsWith('/') ? value : `/${value}`);
+}
+
 /**
  * Universal Fetch Helper with JWT Token Header
  */

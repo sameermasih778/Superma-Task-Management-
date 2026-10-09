@@ -23,7 +23,7 @@ import {
   Check,
   FolderKanban
 } from 'lucide-react';
-import api from '../../utils/api';
+import api, { assetUrl } from '../../utils/api';
 import { getAvatarFor } from '../../utils/avatar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,6 +40,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
   const [assigneeId, setAssigneeId] = useState(task?.assignee_id || '');
   const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.substring(0, 10) : '');
   const [estimatedHours, setEstimatedHours] = useState(task?.estimated_hours || 0);
+  const [actualHours, setActualHours] = useState(task?.actual_hours || 0);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -78,6 +79,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
       setAssigneeId(task.assignee_id || '');
       setDueDate(task.due_date ? task.due_date.substring(0, 10) : '');
       setEstimatedHours(task.estimated_hours || 0);
+      setActualHours(task.actual_hours || 0);
 
       fetchFreshDetails();
       fetchSubtasks();
@@ -101,6 +103,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
         setAssigneeId(data.task.assignee_id || '');
         setDueDate(data.task.due_date ? data.task.due_date.substring(0, 10) : '');
         setEstimatedHours(data.task.estimated_hours || 0);
+        setActualHours(data.task.actual_hours || 0);
       }
     } catch (err) {
       console.warn('Failed to fetch fresh task details:', err.message);
@@ -130,7 +133,8 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
         priority: overrides.priority !== undefined ? overrides.priority : currentPriority,
         assignee_id: overrides.assignee_id !== undefined ? overrides.assignee_id : (assigneeId ? Number(assigneeId) : null),
         due_date: overrides.due_date !== undefined ? overrides.due_date : (dueDate || null),
-        estimated_hours: overrides.estimated_hours !== undefined ? overrides.estimated_hours : Number(estimatedHours)
+        estimated_hours: overrides.estimated_hours !== undefined ? overrides.estimated_hours : Number(estimatedHours),
+        actual_hours: overrides.actual_hours !== undefined ? overrides.actual_hours : Number(actualHours)
       };
 
       const res = await api.put(`/tasks/${task.id}`, payload);
@@ -146,6 +150,13 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
       setIsEditingTitle(false);
       setIsEditingDesc(false);
     }
+  };
+
+  // Quick Time Logging
+  const handleLogTime = async (increment) => {
+    const updated = Math.max(0, parseFloat((Number(actualHours) + increment).toFixed(2)));
+    setActualHours(updated);
+    await handleSaveTaskDetails({ actual_hours: updated });
   };
 
   // Status Change
@@ -545,6 +556,81 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
 
             </div>
 
+            {/* Task Time Tracker Card */}
+            <div className="p-4 bg-zinc-900/40 border border-white/10 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Time Tracker</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {Number(estimatedHours) > 0 && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      Number(actualHours) > Number(estimatedHours)
+                        ? 'bg-red-500/15 border-red-500/30 text-red-400'
+                        : Number(actualHours) > 0
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : 'bg-zinc-800 border-white/10 text-zinc-400'
+                    }`}>
+                      {Number(actualHours) > Number(estimatedHours)
+                        ? `Over estimate (+${(Number(actualHours) - Number(estimatedHours)).toFixed(1)}h)`
+                        : Number(actualHours) > 0
+                        ? `${((Number(actualHours) / Number(estimatedHours)) * 100).toFixed(0)}% Logged`
+                        : 'Not Started'}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-zinc-300">
+                    <strong className="text-white">{Number(actualHours).toFixed(1)}h</strong>
+                    <span className="text-zinc-500"> / {Number(estimatedHours) > 0 ? `${Number(estimatedHours)}h est.` : 'No est.'}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              {Number(estimatedHours) > 0 && (
+                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      Number(actualHours) > Number(estimatedHours) ? 'bg-red-400' : 'bg-indigo-400'
+                    }`}
+                    style={{ width: `${Math.min(100, (Number(actualHours) / Number(estimatedHours)) * 100)}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Quick log buttons */}
+              {canManage && (
+                <div className="flex items-center justify-between pt-1 flex-wrap gap-2 text-xs">
+                  <span className="text-[11px] text-zinc-400">Quick Log:</span>
+                  <div className="flex items-center gap-1.5">
+                    {[0.5, 1, 2].map((hrs) => (
+                      <button
+                        key={hrs}
+                        type="button"
+                        onClick={() => handleLogTime(hrs)}
+                        className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-lg text-[11px] font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                      >
+                        +{hrs}h
+                      </button>
+                    ))}
+                    <div className="flex items-center gap-1 ml-1 pl-2 border-l border-white/10">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={actualHours}
+                        onChange={(e) => setActualHours(e.target.value)}
+                        onBlur={() => handleSaveTaskDetails({ actual_hours: Number(actualHours) })}
+                        placeholder="0"
+                        className="w-14 bg-zinc-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none text-center"
+                      />
+                      <span className="text-[11px] text-zinc-500">hrs</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Task Description */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -847,7 +933,7 @@ export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated 
                             <FileText className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                             <div className="overflow-hidden">
                               <a
-                                href={`http://localhost:5000${att.file_path}`}
+                                href={assetUrl(att.file_path)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="font-semibold text-white hover:underline truncate block"

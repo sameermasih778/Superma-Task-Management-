@@ -258,6 +258,7 @@ const updateTask = async (req, res, next) => {
       priority,
       due_date,
       estimated_hours,
+      actual_hours,
       assignee_id
     } = req.body;
 
@@ -284,11 +285,12 @@ const updateTask = async (req, res, next) => {
     const updatedPriority = priority !== undefined ? priority : current.priority;
     const updatedDueDate = due_date !== undefined ? due_date : current.due_date;
     const updatedEstimatedHours = estimated_hours !== undefined ? estimated_hours : current.estimated_hours;
+    const updatedActualHours = actual_hours !== undefined ? actual_hours : current.actual_hours;
     const updatedAssigneeId = assignee_id !== undefined ? assignee_id : current.assignee_id;
 
     await pool.query(
       `UPDATE tasks 
-       SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, estimated_hours = ?, assignee_id = ?
+       SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, estimated_hours = ?, actual_hours = ?, assignee_id = ?
        WHERE id = ?`,
       [
         updatedTitle,
@@ -297,6 +299,7 @@ const updateTask = async (req, res, next) => {
         updatedPriority,
         updatedDueDate || null,
         updatedEstimatedHours || 0,
+        updatedActualHours || 0,
         updatedAssigneeId || null,
         taskId
       ]
@@ -312,7 +315,8 @@ const updateTask = async (req, res, next) => {
       details: {
         title: updatedTitle,
         status: updatedStatus,
-        priority: updatedPriority
+        priority: updatedPriority,
+        actual_hours: updatedActualHours
       }
     });
 
@@ -328,6 +332,7 @@ const updateTask = async (req, res, next) => {
         priority: updatedPriority,
         due_date: updatedDueDate,
         estimated_hours: updatedEstimatedHours,
+        actual_hours: updatedActualHours,
         assignee_id: updatedAssigneeId
       }
     });

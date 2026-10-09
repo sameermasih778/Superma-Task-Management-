@@ -31,6 +31,8 @@ import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import ActivityPage from './pages/ActivityPage';
+import CalendarPage from './pages/CalendarPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -102,6 +104,8 @@ function MainLayout() {
               </Route>
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="teams" element={<TeamsPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="users" element={<AdminUsersPage />} />

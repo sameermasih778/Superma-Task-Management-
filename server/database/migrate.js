@@ -102,27 +102,59 @@ const migrations = [
   },
 
   {
-    // Repair notifications whose type was silently blanked to '' by migration
-    // 003's root cause. These rows were created by the admin broadcast
-    // endpoint, so 'announcement' is the accurate value to restore.
-    name: '004-repair-blank-notification-types',
+    // teams.created_by - who created each team.
+    //
+    // Without it there is no ownership record, so every authenticated user
+    // could add/remove/delete members on ANY team. This column lets a member
+    // manage only the teams they created, while staff can still manage any.
+    //
+    // Existing teams are backfilled from their first team member: createTeam
+    // auto-inserts the creator as a leader immediately, so the earliest
+    // (joined_at, id) is the creator. Teams with no members keep NULL, which
+    // safely means "only staff can manage".
+    name: '005-teams-created-by',
     async up(pool) {
-      const [rows] = await pool.query(
-        "SELECT id FROM notifications WHERE type IS NULL OR type = ''"
-      );
+      const detailParts = [];
+      let touched = false;
 
-      if (rows.length === 0) {
-        return { status: 'current', detail: 'no blank notification types found' };
+      const [cols] = await pool.query("SHOW COLUMNS FROM teams LIKE 'created_by'");
+      if (cols.length === 0) {
+        await pool.query(
+          'ALTER TABLE teams ADD COLUMN created_by INT DEFAULT NULL AFTER description'
+        );
+        detailParts.push('added teams.created_by column');
+        touched = true;
       }
 
-      const [result] = await pool.query(
-        "UPDATE notifications SET type = 'announcement' WHERE type IS NULL OR type = ''"
+      const [idx] = await pool.query(
+        "SHOW INDEX FROM teams WHERE Key_name = 'idx_teams_created_by'"
       );
+      if (idx.length === 0) {
+        await pool.query('CREATE INDEX idx_teams_created_by ON teams (created_by)');
+        detailParts.push('added index idx_teams_created_by');
+        touched = true;
+      }
 
-      return {
-        status: 'applied',
-        detail: `restored ${result.affectedRows} blank notification type(s) to 'announcement'`
-      };
+      const [backfill] = await pool.query(
+        `UPDATE teams t
+         SET t.created_by = (
+           SELECT tm.user_id FROM team_members tm
+           WHERE tm.team_id = t.id
+           ORDER BY tm.joined_at ASC, tm.id ASC
+           LIMIT 1
+         )
+         WHERE t.created_by IS NULL
+           AND EXISTS (SELECT 1 FROM team_members tm2 WHERE tm2.team_id = t.id)`
+      );
+      if (backfill.affectedRows > 0) {
+        detailParts.push(`backfilled creator on ${backfill.affectedRows} team(s)`);
+        touched = true;
+      }
+
+      if (!touched) {
+        return { status: 'current', detail: 'teams.created_by already present' };
+      }
+      return { status: 'applied', detail: detailParts.join('; ') };
     }
   }
 ];

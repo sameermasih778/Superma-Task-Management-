@@ -135,7 +135,12 @@ export default function ProfilePage() {
     handleFile(e.dataTransfer.files?.[0]);
   };
 
-  const hasStoredUpload = storedAvatar?.startsWith('/uploads/avatars/');
+  // "Remove picture" only makes sense for an actual upload: legacy local
+  // paths or a Cloudinary URL. The placeholder badge has nothing to remove.
+  const hasStoredUpload =
+    !!storedAvatar &&
+    (storedAvatar.startsWith('/uploads/avatars/') ||
+      storedAvatar.includes('res.cloudinary.com/'));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

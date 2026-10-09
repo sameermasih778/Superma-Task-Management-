@@ -2,25 +2,18 @@ const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
 const { sendOtpEmail } = require('../utils/emailService');
-const { verifyImageSignature, AVATAR_DIR } = require('../middleware/upload');
+const { verifyImageBuffer } = require('../middleware/upload');
+const { saveAvatar, removeStoredAsset } = require('../config/assetStorage');
 
-// server/controllers -> server/uploads/avatars
-const AVATAR_PATH_PREFIX = '/uploads/avatars/';
-
-/** Remove a previously stored avatar from disk. Never throws. */
+/**
+ * Remove a previously stored avatar. Never throws and never fails the
+ * request. Handles both Cloudinary URLs and legacy local /uploads paths.
+ */
 function removeAvatarFile(avatarUrl) {
-  if (!avatarUrl || !avatarUrl.startsWith(AVATAR_PATH_PREFIX)) return;
-
-  // basename() strips any traversal segments a crafted URL might contain.
-  const filePath = path.join(AVATAR_DIR, path.basename(avatarUrl));
-
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (cleanupError) {
+  removeStoredAsset(avatarUrl).catch((cleanupError) => {
     console.warn('[Avatar] Could not remove previous file:', cleanupError.message);
-  }
+  });
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'suprema_jwt_super_secret_key_2026_dev_mode';
@@ -468,12 +461,10 @@ const uploadAvatar = async (req, res, next) => {
     const userId = req.user.id;
 
     // Content check. multer has already validated the declared MIME type and
-    // the extension, but both are attacker-controlled, so confirm the bytes on
-    // disk really are an image before trusting the file.
-    const uploadedPath = path.join(AVATAR_DIR, path.basename(req.file.filename));
-    if (!verifyImageSignature(uploadedPath, path.extname(req.file.filename))) {
-      try { fs.unlinkSync(uploadedPath); } catch { /* already gone */ }
-
+    // the extension, but both are attacker-controlled, so confirm the actual
+    // bytes really are an image before anything is stored anywhere.
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (!verifyImageBuffer(req.file.buffer, ext)) {
       return res.status(400).json({
         success: false,
         message:
@@ -481,16 +472,23 @@ const uploadAvatar = async (req, res, next) => {
       });
     }
 
-    // Served by server.js at /uploads, so store a root-relative path rather
-    // than an absolute filesystem path - the app may be served from any host.
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    // Cloudinary when CLOUDINARY_URL is configured (production/Vercel),
+    // local disk otherwise (development).
+    const stored = await saveAvatar(req.file.buffer, ext, userId);
+    const avatarUrl = stored.url;
 
     // Grab the previous value so the old file can be cleaned up once the new
     // one is safely recorded.
     const [existing] = await pool.query('SELECT avatar_url FROM users WHERE id = ?', [userId]);
     const previousAvatar = existing[0]?.avatar_url;
 
-    await pool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, userId]);
+    try {
+      await pool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, userId]);
+    } catch (updateError) {
+      // Never leave an orphaned file behind when the row could not be saved.
+      removeAvatarFile(avatarUrl);
+      throw updateError;
+    }
 
     // Best-effort cleanup - never fail the request because of it.
     removeAvatarFile(previousAvatar);

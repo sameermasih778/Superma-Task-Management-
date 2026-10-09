@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, Search, Bell, Plus, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +7,7 @@ import GlobalSearchModal from './GlobalSearchModal';
 
 export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canManageTasks = ['super_admin', 'admin', 'member'].includes(user?.role);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -135,9 +137,15 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
                   notifications.map((n) => (
                     <div
                       key={n.id}
+                      onClick={() => {
+                        if (n.link) {
+                          setShowBellDropdown(false);
+                          navigate(n.link);
+                        }
+                      }}
                       className={`p-3 text-xs transition-colors ${
                         n.is_read ? 'opacity-70 bg-transparent' : 'bg-white/[0.03]'
-                      }`}
+                      } ${n.link ? 'cursor-pointer hover:bg-white/[0.06]' : ''}`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-white">{n.title}</span>

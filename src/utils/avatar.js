@@ -2,6 +2,7 @@ import avatarSuperAdmin from '../assets/avatar-super-admin.svg';
 import avatarAdmin from '../assets/avatar-admin.svg';
 import avatarDeveloper from '../assets/avatar-developer.svg';
 import avatarDefault from '../assets/avatar-default.svg';
+import { assetUrl } from './api';
 
 /**
  * Staff accounts use a fixed role emblem instead of a personal photo.
@@ -57,7 +58,7 @@ export function getAvatarUrl(user, roleOverride) {
     return ROLE_AVATARS[role];
   }
 
-  if (user.avatar_url) return user.avatar_url;
+  if (user.avatar_url) return assetUrl(user.avatar_url);
 
   return avatarDefault;
 }

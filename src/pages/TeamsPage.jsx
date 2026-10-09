@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function TeamsPage() {
   const { user, activeWorkspace } = useAuth();
   const [teams, setTeams] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchMember, setSearchMember] = useState('');
@@ -50,17 +51,26 @@ export default function TeamsPage() {
   const [submittingAssign, setSubmittingAssign] = useState(false);
 
   const canManage = ['super_admin', 'admin', 'member'].includes(user?.role);
+  const isStaff = ['super_admin', 'admin', 'developer'].includes(user?.role);
+  // Controls inside the team modal are gated PER TEAM: staff can manage any
+  // team, a non-staff user only the team they created. The backend enforces
+  // the same rule; this just keeps the UI honest about it.
+  const canManageThisTeam =
+    selectedTeam != null &&
+    (isStaff || Number(selectedTeam.created_by) === Number(user?.id));
 
   const fetchData = async () => {
     if (!activeWorkspace?.id) return;
     setLoading(true);
     try {
-      const [teamsRes, memRes] = await Promise.all([
+      const [teamsRes, memRes, myRes] = await Promise.all([
         api.get(`/teams?workspace_id=${activeWorkspace.id}`),
-        api.get(`/workspaces/${activeWorkspace.id}/members`)
+        api.get(`/workspaces/${activeWorkspace.id}/members`),
+        api.get('/teams/mine')
       ]);
       setTeams(teamsRes.teams || []);
       setMembers(memRes.members || []);
+      setMyTeams(myRes.teams || []);
     } catch (err) {
       console.warn('Error fetching teams/members:', err.message);
     } finally {
@@ -225,6 +235,61 @@ export default function TeamsPage() {
           </div>
         )}
       </div>
+
+      {/* SECTION 0: MY TEAMS - teams you belong to, across every
+            workspace, so a team you were added to is always visible
+            regardless of which workspace is currently active. */}
+      {myTeams.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <Crown className="w-3.5 h-3.5 text-amber-400" />
+              <span>My Teams</span>
+              <span className="text-[10px] bg-white/10 text-zinc-300 font-bold px-2 py-0.5 rounded-full">
+                {myTeams.length}
+              </span>
+            </h2>
+            <span className="text-[10px] text-zinc-500">Teams you're part of, across every workspace</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {myTeams.map((t) => (
+              <motion.div
+                key={t.id}
+                whileHover={{ y: -2 }}
+                onClick={() => handleOpenTeamModal(t)}
+                className="bg-zinc-950 border border-white/10 hover:border-white/25 p-5 rounded-2xl space-y-3 cursor-pointer transition-all shadow-lg group relative"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
+                    {t.name}
+                  </h3>
+                  <span
+                    className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
+                      t.team_role === 'leader'
+                        ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
+                        : 'bg-indigo-500/15 border border-indigo-500/30 text-indigo-300'
+                    }`}
+                  >
+                    {t.team_role === 'leader' ? 'Leader' : 'Member'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                  {t.description || 'Dedicated workspace squad for collaborative tasks.'}
+                </p>
+
+                <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-white/5">
+                  <span className="truncate">{t.workspace_name}</span>
+                  <span className="text-zinc-400 group-hover:text-white flex items-center gap-1 font-semibold transition-colors">
+                    {t.member_count} {t.member_count === 1 ? 'Member' : 'Members'}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: DEPARTMENT TEAMS */}
       <div className="space-y-4">
@@ -569,7 +634,7 @@ export default function TeamsPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {canManage && (
+                  {canManageThisTeam && (
                     <button
                       onClick={() => handleDeleteTeam(selectedTeam.id)}
                       className="p-1.5 text-zinc-500 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
@@ -588,7 +653,7 @@ export default function TeamsPage() {
               </div>
 
               {/* Add Member To Team Form */}
-              {canManage && (
+              {canManageThisTeam && (
                 <form onSubmit={handleAssignUserToTeam} className="p-4 bg-zinc-900/60 border border-white/10 rounded-2xl space-y-3">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                     <UserPlus className="w-3.5 h-3.5 text-zinc-400" />
@@ -671,7 +736,7 @@ export default function TeamsPage() {
                           </div>
                         </div>
 
-                        {canManage && (
+                        {canManageThisTeam && (
                           <button
                             onClick={() => handleRemoveTeamMember(tm.id)}
                             className="text-zinc-500 hover:text-red-400 p-1.5 transition-colors cursor-pointer"

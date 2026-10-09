@@ -5,9 +5,13 @@ const fs = require('fs');
 const UPLOAD_ROOT = path.join(__dirname, '../uploads');
 const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 
+// Best-effort: the dirs are only needed in local-storage mode. On a
+// read-only serverless filesystem (Vercel) creating them must not crash.
 for (const dir of [UPLOAD_ROOT, AVATAR_DIR]) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    /* read-only filesystem - cloud mode does not need the dirs */
   }
 }
 
@@ -47,13 +51,15 @@ function extOf(filename) {
 
 /* ─────────────────── General attachments (task files) ─────────────────── */
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_ROOT),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `file-${uniqueSuffix}${extOf(file.originalname)}`);
-  }
-});
+/**
+ * Both uploaders keep files IN MEMORY - nothing is written to disk here.
+ *
+ * - The MIME/extension fileFilter runs first and the byte-signature check
+ *   runs in the controller, so an invalid file can never persist anywhere.
+ * - The buffer is what config/assetStorage ships to Cloudinary in
+ *   production; in local dev it writes the same bytes to disk afterwards.
+ */
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -76,23 +82,16 @@ const upload = multer({
 
 /* ──────────────────────────── Avatars ──────────────────────────── */
 
-const avatarStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, AVATAR_DIR),
-  filename: (req, file, cb) => {
-    const ext = extOf(file.originalname);
-    // Store as user-<id>-<timestamp>.<ext> so the owner is obvious on disk and
-    // a re-upload never silently overwrites someone else's file.
-    cb(null, `user-${req.user?.id ?? 'anon'}-${Date.now()}${ext}`);
-  }
-});
-
 /**
  * Stricter than the general uploader on purpose:
  *  - images only
  *  - 2MB cap, since an avatar is displayed in every sidebar and table row
+ *
+ * Storage is the same in-memory one; the final file name is chosen later by
+ * config/assetStorage (Cloudinary public id, or the local disk name).
  */
 const avatarUpload = multer({
-  storage: avatarStorage,
+  storage,
   limits: { fileSize: 2 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
     const ext = extOf(file.originalname);
@@ -126,19 +125,13 @@ const SIGNATURES = {
 };
 
 /**
- * Verify that a file on disk really is the image type its name claims.
- * Returns true/false; never throws.
+ * Verify that a file really is the image type its extension claims.
+ * Works on the in-memory buffer - files are never written to disk before
+ * this passes. Returns true/false; never throws.
  */
-function verifyImageSignature(filePath, extension) {
-  let handle;
-  try {
-    const fd = fs.openSync(filePath, 'r');
-    handle = Buffer.alloc(12);
-    fs.readSync(fd, handle, 0, 12, 0);
-    fs.closeSync(fd);
-  } catch {
-    return false;
-  }
+function verifyImageBuffer(buffer, extension) {
+  if (!buffer || buffer.length < 12) return false;
+  const handle = buffer.slice(0, 12);
 
   const ext = (extension || '').toLowerCase();
 
@@ -153,4 +146,4 @@ function verifyImageSignature(filePath, extension) {
   return candidates.some((sig) => sig.every((byte, i) => handle[i] === byte));
 }
 
-module.exports = { upload, avatarUpload, verifyImageSignature, UPLOAD_ROOT, AVATAR_DIR };
+module.exports = { upload, avatarUpload, verifyImageBuffer, UPLOAD_ROOT, AVATAR_DIR };
