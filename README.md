@@ -9,6 +9,19 @@ Suprema is two things in one codebase:
 
 ---
 
+## Documentation
+
+Detailed guides live in [`docs/`](docs/README.md):
+
+| Guide | For |
+| --- | --- |
+| [User Guide](docs/USER_GUIDE.md) | Members and viewers — signing in, projects, tasks, calendar, analytics, search |
+| [Admin Guide](docs/ADMIN_GUIDE.md) | Staff — user management, roles, passwords, broadcasts, security duties |
+| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Engineers — setup, architecture, full API reference, deployment |
+| [Video Script](docs/VIDEO_SCRIPT.md) | A shot-by-shot recording plan with narration and timings |
+
+---
+
 ## Table of Contents
 
 - [Tech Stack](#tech-stack)
