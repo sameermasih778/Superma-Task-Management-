@@ -1,19 +1,66 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import api from '../utils/api';
 
 export default function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     message: '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (sending) return;
+
+    setSending(true);
+    setError('');
+    setFieldErrors({});
+
+    try {
+      await api.post('/contact', {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        message: formData.message.trim()
+      });
+      setSubmitted(true);
+    } catch (err) {
+      // The API returns per-field messages so the user knows exactly what to fix.
+      if (err.data?.errors) {
+        setFieldErrors(err.data.errors);
+        setError(err.data.message || 'Please fix the highlighted fields.');
+      } else {
+        setError(err.message || 'Could not send your message. Please try again.');
+      }
+    } finally {
+      setSending(false);
+    }
   };
+
+  // Clear a field's error as soon as the user edits it.
+  const updateField = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+    if (error) setError('');
+  };
+
+  const fieldClass = (field) =>
+    `w-full bg-black/60 border rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-[#5f636c] focus:outline-none transition-all ${
+      fieldErrors[field]
+        ? 'border-red-500/60 focus:border-red-500'
+        : 'border-white/10 focus:border-white/30'
+    }`;
 
   return (
     <motion.div
@@ -55,9 +102,12 @@ export default function ContactForm() {
               required
               placeholder="Enter your name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-[#5f636c] focus:outline-none focus:border-white/30 transition-all"
+              onChange={(e) => updateField('name', e.target.value)}
+              className={fieldClass('name')}
             />
+            {fieldErrors.name && (
+              <span className="mt-1.5 block text-xs text-red-400">{fieldErrors.name}</span>
+            )}
           </label>
 
           <label className="block text-left">
@@ -68,9 +118,12 @@ export default function ContactForm() {
               required
               placeholder="Enter your email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-[#5f636c] focus:outline-none focus:border-white/30 transition-all"
+              onChange={(e) => updateField('email', e.target.value)}
+              className={fieldClass('email')}
             />
+            {fieldErrors.email && (
+              <span className="mt-1.5 block text-xs text-red-400">{fieldErrors.email}</span>
+            )}
           </label>
 
           <label className="block text-left">
@@ -81,17 +134,37 @@ export default function ContactForm() {
               rows={5}
               placeholder="Enter your message"
               value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-[#5f636c] focus:outline-none focus:border-white/30 transition-all resize-none"
+              onChange={(e) => updateField('message', e.target.value)}
+              className={`${fieldClass('message')} resize-none`}
             />
+            {fieldErrors.message && (
+              <span className="mt-1.5 block text-xs text-red-400">{fieldErrors.message}</span>
+            )}
           </label>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-3 text-left">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+              <p className="text-xs text-red-200">{error}</p>
+            </div>
+          )}
 
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-white text-black font-bold text-sm py-3.5 rounded-xl hover:bg-zinc-200 transition-all shadow-lg active:scale-[0.98] cursor-pointer"
+            disabled={sending}
+            className="w-full inline-flex items-center justify-center gap-2 bg-white text-black font-bold text-sm py-3.5 rounded-xl hover:bg-zinc-200 transition-all shadow-lg active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Send your message
-            <ArrowRight className="w-4 h-4" />
+            {sending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                Send your message
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
       )}

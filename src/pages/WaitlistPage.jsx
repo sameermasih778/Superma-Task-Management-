@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -20,15 +22,28 @@ import FreeTrialSection from '../components/FreeTrialSection';
 export default function WaitlistPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState('');
+  const [position, setPosition] = useState(null);
+  const [referralCode, setReferralCode] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email) {
+    if (!email || joining) return;
+
+    setJoining(true);
+    setError('');
+
+    try {
+      const res = await api.post('/waitlist', { email: email.trim(), source: 'waitlist_page' });
+      setPosition(res.position);
+      setReferralCode(res.referralCode || null);
       setSubmitted(true);
-      setTimeout(() => {
-        setSubmitted(false);
-        setEmail('');
-      }, 4000);
+      setEmail('');
+    } catch (err) {
+      setError(err.message || 'Could not join the waitlist. Please try again.');
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -161,11 +176,46 @@ export default function WaitlistPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               type="submit"
-              className="bg-white text-black font-bold text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl sm:rounded-full hover:bg-zinc-200 transition-all shadow-md cursor-pointer whitespace-nowrap"
+              disabled={joining}
+              className="bg-white text-black font-bold text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl sm:rounded-full hover:bg-zinc-200 transition-all shadow-md cursor-pointer whitespace-nowrap inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitted ? 'Joined Waitlist!' : 'Join Waitlist'}
+              {joining ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Joining...
+                </>
+              ) : submitted ? (
+                'Joined Waitlist!'
+              ) : (
+                'Join Waitlist'
+              )}
             </motion.button>
           </div>
+
+          {/* Real queue position returned by the API */}
+          {submitted && position && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 text-center text-xs text-emerald-400 font-semibold"
+            >
+              You are #{position} in line
+              {referralCode && (
+                <span className="text-zinc-500 font-normal"> · referral code {referralCode}</span>
+              )}
+            </motion.p>
+          )}
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 flex items-center justify-center gap-1.5 text-xs text-red-400"
+            >
+              <AlertCircle className="h-3.5 w-3.5" />
+              {error}
+            </motion.p>
+          )}
         </motion.form>
 
         {/* No Spam Subtext */}

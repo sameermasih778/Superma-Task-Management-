@@ -104,21 +104,7 @@ npm run dev
 
 Or run them separately with `npm run dev:client` and `npm run dev:server`.
 
----
 
-## Default Credentials
-
-Seeded by `npm run db:init`. 
-
-| Role | Email | Portal |
-| --- | --- | --- |
-| Super Admin | `admin@suprema.io` | `/admin-login` |
-| Admin | `sarah@suprema.io` | `/admin-login` |
-| Developer | `developer@suprema.io` | `/admin-login` |
-| Member | `alex@suprema.io` | `/login` |
-| Viewer | `client@suprema.io` | `/login` |
-
-> These are development credentials committed to the repository. Rotate them before any deployment.
 
 ### The two login portals
 
@@ -454,6 +440,10 @@ CLOUDINARY_URL=
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
 
+# Google sign-in - the WEB OAuth client ID from Google Cloud Console.
+# Must match GOOGLE_CLIENT_ID on the server; leave empty to hide the button.
+GOOGLE_CLIENT_ID=
+
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 
@@ -464,13 +454,27 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
+# How long a request waits for SMTP before continuing in the background.
+# The pooled transport (server/config/mailer.js) pays Gmail's TLS handshake
+# once per process instead of on every email: measured 15.4s for the first
+# send, then ~2s once the connection is reused. Lower this for faster
+# responses; the email still goes out in the background.
+SMTP_WAIT_MS=5000
 ```
 
 ### `.env` (client)
 
 ```env
 VITE_API_URL=http://localhost:5000/api/v1
+
+# Google sign-in. Must be the SAME client ID as GOOGLE_CLIENT_ID on the server.
+# Leave empty and the button is hidden rather than left on a page that cannot work.
+VITE_GOOGLE_CLIENT_ID=
 ```
+
+> **Vite reads env vars at BUILD time.** After changing any `VITE_*` value you must
+> rebuild and redeploy the frontend - editing it in the Vercel dashboard without a
+> rebuild changes nothing.
 
 > **`JWT_SECRET` has a hardcoded fallback** (`suprema_jwt_super_secret_key_2026_dev_mode`) in the source so local dev works out of the box. This must be set to a real value in any deployed environment, or tokens can be forged.
 
@@ -534,6 +538,7 @@ while the API silently breaks:
    | `CLIENT_ORIGIN` | `https://<your-frontend>.vercel.app` (comma-separated for several) |
    | `CLOUDINARY_URL` | `cloudinary://key:secret@cloud` |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | for OTP emails |
+   | `GOOGLE_CLIENT_ID` | OAuth client ID, only if Google sign-in is enabled |
 
    `server/.env` is **not** committed to git, so these dashboard values are the
    only copy Vercel will see.
@@ -546,11 +551,42 @@ In the **frontend's** Vercel project → Settings → Environment Variables:
 
 ```env
 VITE_API_URL=https://<backend-host>/api/v1
+VITE_GOOGLE_CLIENT_ID=<same OAuth client ID as the backend>
 ```
 
 then redeploy. The committed root `.env` still contains
 `http://localhost:5000/api/v1`; dashboard variables take precedence over it, but
 if `VITE_API_URL` is never set the deployed site ships with the localhost value.
+
+### Google sign-in setup
+
+Google sign-in is optional. Leave both client ID variables empty and the button
+is hidden entirely rather than left on a page that cannot work.
+
+1. Google Cloud Console → **APIs & Services → Credentials → Create credentials →
+   OAuth client ID → Web application**
+2. Under **Authorised JavaScript origins**, add every origin the app is served
+   from — scheme and port included, **no trailing slash**:
+
+   ```text
+   http://localhost:5173
+   http://localhost:4173
+   https://<your-frontend>.vercel.app
+   ```
+
+   A missing or misspelled origin fails as Google's
+   `Error 400: redirect_uri_mismatch`, which appears inside the pop-up window
+   rather than on your page.
+3. Set the same client ID as both `GOOGLE_CLIENT_ID` (backend) and
+   `VITE_GOOGLE_CLIENT_ID` (frontend).
+4. New apps start in **Testing** publishing status: add each account that needs
+   to test under **Test users** on the consent screen, or Google blocks sign-in
+   with "Access blocked".
+
+Sign-in creates a plain **member** account and can never create or grant a staff
+role. An address that already exists keeps its existing role, so staff are never
+promoted or demoted through this path. Accounts are only accepted when Google
+reports the email as verified.
 
 ### Platform limits to know about
 

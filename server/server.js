@@ -111,6 +111,13 @@ app.use((req, res, next) => {
 // Centralized Error Handling Middleware
 app.use(errorHandler);
 
+// Warm the SMTP connection in the background. Gmail's TLS handshake can take
+// 15-23s from some networks; paying it at boot means the first password reset
+// or OTP email is fast. Fire and forget - it never blocks startup.
+if (process.env.NODE_ENV !== 'test') {
+  require('./config/mailer').warmup();
+}
+
 const PORT = parseInt(process.env.PORT || '5000', 10);
 // On Vercel the exported app IS the serverless function (VERCEL=1 is set by
 // the platform) - binding a local port there is unnecessary.

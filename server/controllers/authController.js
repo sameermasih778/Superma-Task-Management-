@@ -2,6 +2,8 @@ const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const { sendOtpEmail } = require('../utils/emailService');
 const { verifyImageBuffer } = require('../middleware/upload');
 const { saveAvatar, removeStoredAsset } = require('../config/assetStorage');
@@ -84,6 +86,17 @@ const sendOtp = async (req, res, next) => {
 
     // 4. Send Email via Nodemailer
     const emailResult = await sendOtpEmail(email, otpCode);
+
+    // Report what actually happened. Telling the user a code is on its way when
+    // the send failed is the worst possible answer - they simply wait for an
+    // email that will never arrive and have no idea why.
+    if (!emailResult.sent) {
+      return res.status(502).json({
+        success: false,
+        message:
+          'We could not send the verification email. Check that address, then try again in a minute.'
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -379,6 +392,171 @@ const login = async (req, res, next) => {
 };
 
 /**
+ * POST /api/v1/auth/google
+ * Sign in (or sign up) with a Google ID token.
+ *
+ * The browser gets a signed credential from Google Identity Services and posts
+ * it here; the server verifies that signature against Google's public keys and
+ * the configured CLIENT ID before trusting a single field of it. The app's own
+ * JWT is then issued exactly like a password login, so nothing downstream needs
+ * to know which method was used.
+ *
+ * Safety rules that matter:
+ *  - `email_verified` MUST be true, otherwise anyone could claim an address
+ *    they do not own and hijack the matching local account.
+ *  - Accounts are matched on the verified email, never auto-created from an
+ *    unverified one.
+ *  - A staff account can still sign in here and keeps its role; a brand new
+ *    user is always created as a plain member, never staff.
+ */
+const googleClient = new OAuth2Client();
+
+const googleSignIn = async (req, res, next) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.status(503).json({
+        success: false,
+        message: 'Google sign-in is not configured on this server.'
+      });
+    }
+
+    const credential = typeof req.body?.credential === 'string' ? req.body.credential.trim() : '';
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'No Google credential was provided.'
+      });
+    }
+
+    // Verify the credential against Google, whichever kind it is.
+    //
+    //  - ID token (3 dot-separated JWT segments): the embedded-button flow.
+    //    Verified cryptographically against Google's public keys - no network.
+    //  - Access token (opaque): the custom popup flow used by our own button.
+    //    Verified by asking Google who it belongs to.
+    //
+    // Either way the values used below come from Google, never from the browser.
+    let profile;
+
+    const isJwt = credential.split('.').length === 3;
+
+    if (isJwt) {
+      try {
+        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
+        profile = ticket.getPayload();
+      } catch (verifyErr) {
+        console.warn('[Auth] Google credential rejected:', verifyErr.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Google sign-in failed: that credential is invalid or has expired.'
+        });
+      }
+    } else {
+      try {
+        const lookup = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${credential}` }
+        });
+
+        if (!lookup.ok) {
+          return res.status(401).json({
+            success: false,
+            message: 'Google sign-in failed: that credential is invalid or has expired.'
+          });
+        }
+
+        profile = await lookup.json();
+      } catch (lookupErr) {
+        console.warn('[Auth] Google userinfo lookup failed:', lookupErr.message);
+        return res.status(502).json({
+          success: false,
+          message: 'Could not verify your Google account right now. Please try again.'
+        });
+      }
+    }
+
+    const { email, name, picture, email_verified: emailVerified } = profile;
+
+    if (!email || !emailVerified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your Google account email is not verified, so it cannot be used to sign in.'
+      });
+    }
+
+    const normalisedEmail = email.toLowerCase();
+
+    const [existing] = await pool.query(
+      'SELECT id, name, email, role, status, avatar_url FROM users WHERE email = ?',
+      [normalisedEmail]
+    );
+
+    let user = existing[0];
+    let createdAccount = false;
+
+    if (!user) {
+      // First time this Google identity is used: create a plain member account.
+      // The password column is left as an unusable random hash, because this
+      // account authenticates through Google rather than a password.
+      const unusableHash = `!google-${crypto.randomBytes(24).toString('hex')}`;
+      const [insert] = await pool.query(
+        `INSERT INTO users (name, email, password_hash, avatar_url, role, status)
+         VALUES (?, ?, ?, ?, 'member', 'active')`,
+        [name || normalisedEmail.split('@')[0], normalisedEmail, unusableHash, picture || null]
+      );
+      user = {
+        id: insert.insertId,
+        name: name || normalisedEmail.split('@')[0],
+        email: normalisedEmail,
+        role: 'member',
+        status: 'active',
+        avatar_url: picture || null
+      };
+      createdAccount = true;
+      console.log(`[Auth] Google sign-up created member account ${user.email}`);
+    } else if (user.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: `Account Suspended: Your account status is '${user.status}'. Contact support.`
+      });
+    } else if (picture && !user.avatar_url) {
+      // Keep a profile picture only if the user has not set their own.
+      await pool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [picture, user.id]);
+      user.avatar_url = picture;
+    }
+
+    const [workspaces] = await pool.query(
+      `SELECT w.id, w.name, w.slug, w.plan, wm.role
+       FROM workspaces w
+       JOIN workspace_members wm ON w.id = wm.workspace_id
+       WHERE wm.user_id = ?`,
+      [user.id]
+    );
+
+    const userPayload = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url
+    };
+
+    const token = generateToken(userPayload);
+
+    res.status(200).json({
+      success: true,
+      message: createdAccount ? 'Account created with Google' : 'Login successful',
+      createdAccount,
+      provider: 'google',
+      token,
+      user: { ...userPayload, workspaces }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Controller: Get Current Logged-in User Profile
  * GET /api/v1/auth/me
  */
@@ -541,6 +719,7 @@ module.exports = {
   verifyOtp,
   register,
   login,
+  googleSignIn,
   getMe,
   uploadAvatar,
   deleteAvatar

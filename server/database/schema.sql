@@ -206,3 +206,71 @@ CREATE TABLE IF NOT EXISTS email_verifications (
     INDEX idx_ev_email (email),
     INDEX idx_ev_code (otp_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. MARKETING: CONTACT MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    subject VARCHAR(200) DEFAULT 'Website Inquiry',
+    message TEXT NOT NULL,
+    status ENUM('unread', 'read', 'replied') NOT NULL DEFAULT 'unread',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_contact_status (status),
+    INDEX idx_contact_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. MARKETING: WAITLIST SIGNUPS TABLE
+-- queue_position is assigned from MAX(queue_position)+1 at insert time, so the
+-- stored number always reflects the order people actually joined.
+CREATE TABLE IF NOT EXISTS waitlist_leads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(150) NOT NULL,
+    queue_position INT DEFAULT NULL,
+    referral_code VARCHAR(50) DEFAULT NULL,
+    status ENUM('pending', 'invited', 'active') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_waitlist_email (email),
+    INDEX idx_waitlist_position (queue_position)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. MARKETING: CHANGELOG ENTRIES TABLE
+CREATE TABLE IF NOT EXISTS changelogs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tag_id VARCHAR(100) NOT NULL,
+    date VARCHAR(50) NOT NULL,
+    badge VARCHAR(50) DEFAULT 'New',
+    badge_color VARCHAR(50) DEFAULT 'text-emerald-400',
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    sub_item_title VARCHAR(255) DEFAULT NULL,
+    sub_item_description TEXT,
+    tag VARCHAR(100) DEFAULT NULL,
+    banner_title VARCHAR(255) DEFAULT NULL,
+    bullets JSON DEFAULT NULL,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_changelog_tag (tag_id),
+    INDEX idx_changelog_badge (badge)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16. MARKETING: PRICING PLANS TABLE
+CREATE TABLE IF NOT EXISTS pricing_plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    plan_id VARCHAR(50) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    price_monthly VARCHAR(50) DEFAULT NULL,
+    price_yearly VARCHAR(50) DEFAULT NULL,
+    period VARCHAR(50) DEFAULT 'per user / month',
+    subtext VARCHAR(100) DEFAULT NULL,
+    popular TINYINT(1) DEFAULT 0,
+    popular_badge VARCHAR(50) DEFAULT NULL,
+    has_toggle TINYINT(1) DEFAULT 1,
+    btn_variant VARCHAR(50) DEFAULT 'dark',
+    btn_text VARCHAR(50) DEFAULT 'Get Started',
+    features JSON DEFAULT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_plan_id (plan_id),
+    INDEX idx_plan_sort (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

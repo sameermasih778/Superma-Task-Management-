@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, ArrowRight, ShieldAlert, Eye, EyeOff, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldAlert, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import GoogleSignInButton from '../components/GoogleSignInButton';
+
+// Google Identity Services. Set VITE_GOOGLE_CLIENT_ID to enable the button;
+// without it the page simply hides the Google option instead of showing a
+// button that cannot work.
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,8 +17,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,15 +27,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      console.log('[LoginPage] Submitting login for:', email);
       sessionStorage.setItem('suprema_login_type', 'user');
       localStorage.setItem('suprema_last_login_type', 'user');
-      const result = await login(email, password, 'user');
-      console.log('[LoginPage] Login result:', result);
+      await login(email, password, 'user');
       // Simple user lands on the main website home page with Navbar
       navigate('/');
     } catch (err) {
-      console.error('[LoginPage] Login error:', err);
       const errorMessage = err.data?.message || err.message || 'Login failed. Please check credentials.';
       setError(errorMessage);
     } finally {
@@ -119,13 +123,41 @@ export default function LoginPage() {
         </AnimatePresence>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Custom-styled Google sign-in. The component renders nothing when no
+            client ID is configured, so the divider disappears with it. */}
+        {GOOGLE_CLIENT_ID && (
+          <div className="space-y-7">
+            <GoogleSignInButton
+              onCredential={async (accessToken) => {
+                setError('');
+                try {
+                  sessionStorage.setItem('suprema_login_type', 'user');
+                  localStorage.setItem('suprema_last_login_type', 'user');
+                  await loginWithGoogle(accessToken);
+                  navigate('/');
+                } catch (err) {
+                  setError(err.data?.message || err.message || 'Google sign-in failed. Please try again.');
+                }
+              }}
+            />
+
+            <div className="flex items-center gap-4">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/12 to-white/20" />
+              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                or continue with email
+              </span>
+              <span className="h-px flex-1 bg-gradient-to-l from-transparent via-white/12 to-white/20" />
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-8">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-zinc-300 mb-2 uppercase tracking-wider">
               Email Address
             </label>
             <div className="relative group/input">
@@ -135,7 +167,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
+                placeholder="Enter your email"
                 className="w-full bg-zinc-900/90 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-all shadow-inner"
               />
             </div>
@@ -146,7 +178,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.35 }}
           >
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-zinc-300 mb-2 uppercase tracking-wider">
               Password
             </label>
             <div className="relative group/input">
@@ -156,7 +188,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 className="w-full bg-zinc-900/90 border border-white/10 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-all shadow-inner"
               />
               <button
@@ -215,7 +247,7 @@ export default function LoginPage() {
 
           <div className="flex items-center justify-center gap-2 text-[11px] text-zinc-500 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>256-bit Encryption • JWT Workspace Session</span>
+            <span>256-bit Encryption â€¢ JWT Workspace Session</span>
           </div>
         </motion.div>
       </motion.div>

@@ -12,6 +12,7 @@ const attachmentRoutes = require('./attachmentRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const activityRoutes = require('./activityRoutes');
 const adminRoutes = require('./adminRoutes');
+const marketingRoutes = require('./marketingRoutes');
 
 // Mount Sub-routers
 router.use('/health', healthRoutes);
@@ -25,6 +26,9 @@ router.use('/attachments', attachmentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/activity', activityRoutes);
 router.use('/admin', adminRoutes);
+
+// --- Public Marketing (no session required) ---
+router.use('/', marketingRoutes);
 
 module.exports = router;
 

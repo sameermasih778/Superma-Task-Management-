@@ -206,6 +206,26 @@ export const AuthProvider = ({ children }) => {
     throw new Error(data.message || 'Login failed: Unexpected response from server');
   };
 
+  /**
+   * Sign in with a Google credential (Google Identity Services).
+   *
+   * The server verifies that credential against Google's public keys and
+   * issues our own JWT, so from here on the session is identical to a password
+   * login - including creating the account on first use.
+   */
+  const loginWithGoogle = async (credential) => {
+    const data = await api.post('/auth/google', { credential });
+
+    if (data.success && data.token) {
+      // Google-authenticated accounts are always routed as members unless the
+      // matched account is staff, which persistSession derives from the role.
+      persistSession(data.token, data.user, 'user');
+      adoptSession(data.token, data.user);
+      return data;
+    }
+    throw new Error(data.message || 'Google sign-in failed');
+  };
+
   const sendOtp = async (email) => {
     return await api.post('/auth/send-otp', { email });
   };
@@ -269,6 +289,7 @@ export const AuthProvider = ({ children }) => {
       activeWorkspace,
       loading,
       login,
+      loginWithGoogle,
       sendOtp,
       verifyOtp,
       register,

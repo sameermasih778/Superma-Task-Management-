@@ -156,6 +156,171 @@ const migrations = [
       }
       return { status: 'applied', detail: detailParts.join('; ') };
     }
+  },
+  {
+    // Marketing tables (Milestone 6) - the public Contact / Waitlist /
+    // Changelog / Pricing endpoints.
+    //
+    // These tables were created directly during development, so the only thing
+    // a migration can still add is the INTEGRITY GUARANTEE the app relies on:
+    // one row per waitlist email. Without a UNIQUE index, two concurrent
+    // requests for the same address could both pass the "already registered?"
+    // check and insert duplicates, which would hand two people the same queue
+    // position. Adding the index is skipped (with a warning) if duplicates
+    // already exist, because fixing data is a manual decision.
+    name: '006-marketing-tables',
+    async up(pool) {
+      const detail = [];
+      let touched = false;
+
+      const TABLES = [
+        `CREATE TABLE IF NOT EXISTS contact_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(150) NOT NULL,
+            subject VARCHAR(200) DEFAULT 'Website Inquiry',
+            message TEXT NOT NULL,
+            status ENUM('unread','read','replied') NOT NULL DEFAULT 'unread',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_contact_status (status),
+            INDEX idx_contact_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+        `CREATE TABLE IF NOT EXISTS waitlist_leads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(150) NOT NULL,
+            queue_position INT DEFAULT NULL,
+            referral_code VARCHAR(50) DEFAULT NULL,
+            status ENUM('pending','invited','active') NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_waitlist_position (queue_position)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+        `CREATE TABLE IF NOT EXISTS changelogs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tag_id VARCHAR(100) NOT NULL,
+            date VARCHAR(50) NOT NULL,
+            badge VARCHAR(50) DEFAULT 'New',
+            badge_color VARCHAR(50) DEFAULT 'text-emerald-400',
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            sub_item_title VARCHAR(255) DEFAULT NULL,
+            sub_item_description TEXT,
+            tag VARCHAR(100) DEFAULT NULL,
+            banner_title VARCHAR(255) DEFAULT NULL,
+            bullets JSON DEFAULT NULL,
+            note TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_changelog_badge (badge)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+        `CREATE TABLE IF NOT EXISTS pricing_plans (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            plan_id VARCHAR(50) NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            price_monthly VARCHAR(50) DEFAULT NULL,
+            price_yearly VARCHAR(50) DEFAULT NULL,
+            period VARCHAR(50) DEFAULT 'per user / month',
+            subtext VARCHAR(100) DEFAULT NULL,
+            popular TINYINT(1) DEFAULT 0,
+            popular_badge VARCHAR(50) DEFAULT NULL,
+            has_toggle TINYINT(1) DEFAULT 1,
+            btn_variant VARCHAR(50) DEFAULT 'dark',
+            btn_text VARCHAR(50) DEFAULT 'Get Started',
+            features JSON DEFAULT NULL,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_plan_sort (sort_order)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+      ];
+
+      for (const ddl of TABLES) {
+        await pool.query(ddl);
+      }
+
+      // Unique email on the waitlist, but only when the data allows it.
+      const [dupes] = await pool.query(
+        'SELECT email, COUNT(*) n FROM waitlist_leads GROUP BY email HAVING n > 1'
+      );
+      if (dupes.length > 0) {
+        return {
+          status: 'skipped',
+          detail:
+            `waitlist_leads contains ${dupes.length} duplicate email(s), so the UNIQUE ` +
+            'index was not added. De-duplicate the table and re-run to enforce it.'
+        };
+      }
+
+      const [indexes] = await pool.query(
+        "SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'waitlist_leads' AND index_name = 'uq_waitlist_email'"
+      );
+      if (indexes[0].c === 0) {
+        await pool.query('ALTER TABLE waitlist_leads ADD UNIQUE KEY uq_waitlist_email (email)');
+        detail.push('added UNIQUE index on waitlist_leads.email');
+        touched = true;
+      }
+
+      if (!touched) {
+        return { status: 'current', detail: 'marketing tables present, waitlist email already unique' };
+      }
+      return { status: 'applied', detail: detail.join('; ') };
+    }
+  },
+  {
+    // changelogs.release_date - a REAL date column for ordering.
+    //
+    // The table stores `date` as a display string ('Oct 12, 2024'). Sorting
+    // lexicographically puts 'Sep 15, 2024' after 'Oct 12, 2024', so the
+    // changelog rendered oldest-first. Adding a proper DATE column and
+    // backfilling it from that string fixes the ordering without changing what
+    // the page displays.
+    name: '007-changelog-release-date',
+    async up(pool) {
+      const detail = [];
+      let touched = false;
+
+      const [cols] = await pool.query(
+        "SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'changelogs' AND column_name = 'release_date'"
+      );
+
+      if (cols[0].c === 0) {
+        await pool.query('ALTER TABLE changelogs ADD COLUMN release_date DATE DEFAULT NULL AFTER tag_id');
+        // %b = abbreviated month name, %d = day, %Y = 4-digit year.
+        const [backfill] = await pool.query(
+          `UPDATE changelogs
+           SET release_date = STR_TO_DATE(date, '%b %d, %Y')
+           WHERE release_date IS NULL`
+        );
+        const [indexes] = await pool.query(
+          "SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'changelogs' AND index_name = 'idx_changelog_release_date'"
+        );
+        if (indexes[0].c === 0) {
+          await pool.query('ALTER TABLE changelogs ADD INDEX idx_changelog_release_date (release_date)');
+        }
+        detail.push(`added changelogs.release_date, backfilled ${backfill.affectedRows} row(s)`);
+        touched = true;
+      }
+
+      // Keep parity with schema.sql: one changelog row per tag.
+      const [dupes] = await pool.query(
+        'SELECT tag_id, COUNT(*) n FROM changelogs GROUP BY tag_id HAVING n > 1'
+      );
+      if (dupes.length === 0) {
+        const [existing] = await pool.query(
+          "SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'changelogs' AND index_name = 'uq_changelog_tag'"
+        );
+        if (existing[0].c === 0) {
+          await pool.query('ALTER TABLE changelogs ADD UNIQUE KEY uq_changelog_tag (tag_id)');
+          detail.push('added UNIQUE index on changelogs.tag_id');
+          touched = true;
+        }
+      }
+
+      if (!touched) {
+        return { status: 'current', detail: 'changelog release_date + unique tag already present' };
+      }
+      return { status: 'applied', detail: detail.join('; ') };
+    }
   }
 ];
 

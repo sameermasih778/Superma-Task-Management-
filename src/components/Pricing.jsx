@@ -1,84 +1,111 @@
-import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  Crown, 
-  Info, 
-  Users, 
-  Smartphone, 
-  ShieldCheck, 
-  Clock, 
-  Cloud, 
+import {
+  CheckCircle2,
+  Crown,
+  Info,
+  Users,
+  Smartphone,
+  ShieldCheck,
+  Clock,
+  Cloud,
   Star,
   Lock,
   Zap
 } from 'lucide-react';
+import api from '../utils/api';
+
+/**
+ * Bundled fallback plans, used only if GET /pricing is unreachable.
+ * Kept in sync with the pricing_plans table (migration 006).
+ */
+const FALLBACK_PLANS = [
+  {
+    id: 'free', name: 'Free Plan', price: '$0', priceMonthly: 0, priceYearly: null,
+    period: 'per user / month', subtext: 'Free for everyone', popular: false, hasToggle: false,
+    btnVariant: 'dark', btnText: 'Get Started',
+    features: [
+      { name: 'Task Management', included: true },
+      { name: 'Data Encryption', included: true },
+      { name: 'Deadline Alerts', included: true },
+      { name: 'Collaboration Tools', included: false },
+      { name: 'Custom Workflows', included: false },
+      { name: 'Real-Time Sync', included: false },
+    ],
+  },
+  {
+    id: 'pro', name: 'Pro Plan', price: '$12', priceMonthly: 12, priceYearly: 10,
+    period: 'per user / month', subtext: null, popularBadge: 'Most Popular', popular: true,
+    hasToggle: true, btnVariant: 'white', btnText: 'Get Started',
+    features: [
+      { name: 'Task Management', included: true },
+      { name: 'Data Encryption', included: true },
+      { name: 'Deadline Alerts', included: true },
+      { name: 'Collaboration Tools', included: true },
+      { name: 'Custom Workflows', included: false },
+      { name: 'Real-Time Sync', included: false },
+    ],
+  },
+  {
+    id: 'advanced', name: 'Advanced Plan', price: '$19', priceMonthly: 19, priceYearly: 15,
+    period: 'per user / month', subtext: null, popular: false, hasToggle: true,
+    btnVariant: 'dark', btnText: 'Get Started',
+    features: [
+      { name: 'Task Management', included: true },
+      { name: 'Data Encryption', included: true },
+      { name: 'Deadline Alerts', included: true },
+      { name: 'Collaboration Tools', included: true },
+      { name: 'Custom Workflows', included: true },
+      { name: 'Real-Time Sync', included: true },
+    ],
+  },
+];
+
+/**
+ * Price string for a plan under the current billing toggle.
+ *
+ * Plans carry both prices (pricing_plans.price_monthly / price_yearly). If a
+ * plan has no yearly price - the free tier - the monthly price is shown either
+ * way, so the toggle can never render a blank price.
+ */
+function displayPrice(plan, billedYearly) {
+  const yearly = billedYearly ? plan.priceYearly : null;
+  const value = yearly !== null && yearly !== undefined ? yearly : plan.priceMonthly;
+
+  if (value === null || value === undefined) return plan.price ?? '';
+  return `$${value}`;
+}
 
 export default function Pricing() {
   const [billedYearly, setBilledYearly] = useState(true);
 
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free Plan',
-      price: '$0',
-      period: 'per user / month',
-      subtext: 'Free for everyone',
-      popular: false,
-      hasToggle: false,
-      btnVariant: 'dark',
-      btnText: 'Get Started',
-      features: [
-        { name: 'Task Management', included: true },
-        { name: 'Data Encryption', included: true },
-        { name: 'Deadline Alerts', included: true },
-        { name: 'Collaboration Tools', included: false },
-        { name: 'Task Management', included: false },
-        { name: 'Custom Workflows', included: false },
-        { name: 'Real-Time Sync', included: false },
-      ],
-    },
-    {
-      id: 'pro',
-      name: 'Pro Plan',
-      price: '$12',
-      period: 'per user / month',
-      popularBadge: 'Most Popular',
-      popular: true,
-      hasToggle: true,
-      btnVariant: 'white',
-      btnText: 'Get Started',
-      features: [
-        { name: 'Task Management', included: true },
-        { name: 'Data Encryption', included: true },
-        { name: 'Deadline Alerts', included: true },
-        { name: 'Collaboration Tools', included: true },
-        { name: 'Task Management', included: false },
-        { name: 'Custom Workflows', included: false },
-        { name: 'Real-Time Sync', included: false },
-      ],
-    },
-    {
-      id: 'advanced',
-      name: 'Advanced Plan',
-      price: '$19',
-      period: 'per user / month',
-      popular: false,
-      hasToggle: true,
-      btnVariant: 'dark',
-      btnText: 'Get Started',
-      features: [
-        { name: 'Task Management', included: true },
-        { name: 'Data Encryption', included: true },
-        { name: 'Deadline Alerts', included: true },
-        { name: 'Collaboration Tools', included: true },
-        { name: 'Task Management', included: true },
-        { name: 'Custom Workflows', included: true },
-        { name: 'Real-Time Sync', included: true },
-      ],
-    },
-  ];
+  /**
+   * Plans come from the API (GET /pricing). The hardcoded array below stays as
+   * the fallback so the pricing section always renders, even if the backend is
+   * unreachable - a public sales page must never go blank.
+   *
+   * The yearly toggle used to be decorative: it flipped a switch and the price
+   * never changed. priceMonthly / priceYearly come from the database, so the
+   * displayed price is now genuinely different when billing yearly.
+   */
+  const [plans, setPlans] = useState(FALLBACK_PLANS);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/pricing')
+      .then((res) => {
+        if (!cancelled && Array.isArray(res.plans) && res.plans.length > 0) {
+          setPlans(res.plans);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Pricing] Falling back to bundled plans:', err.message);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   const allPlansFeatures = [
     { icon: Users, label: 'Collaboration Tools' },
@@ -157,10 +184,10 @@ export default function Pricing() {
                   )}
                 </div>
 
-                {/* Price Display */}
+                {/* Price Display - yearly billing now actually changes the price */}
                 <div className="flex items-baseline gap-2 mb-4">
                   <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight font-tight">
-                    {plan.price}
+                    {displayPrice(plan, billedYearly)}
                   </span>
                   <span className="text-xs text-zinc-400 font-medium">
                     {plan.period}
@@ -265,7 +292,7 @@ export default function Pricing() {
                   <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-zinc-400 whitespace-nowrap">
                     <IconComp className="w-4 h-4 text-zinc-300" />
                     <span className="text-zinc-300">{item.label}</span>
-                    <span className="text-zinc-600 ml-5">•</span>
+                    <span className="text-zinc-600 ml-5">â€¢</span>
                   </div>
                 );
               })}

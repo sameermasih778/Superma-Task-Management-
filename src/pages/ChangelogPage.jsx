@@ -1,15 +1,39 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useSpring } from 'framer-motion';
-import { 
-  Sparkles, 
+import {
+  Sparkles,
   Bell
 } from 'lucide-react';
-import { changelogEntries } from '../data/changelogData';
+import api from '../utils/api';
+import { changelogEntries as fallbackEntries } from '../data/changelogData';
 import smallLogo from '../assets/small logo.svg';
 import FreeTrialSection from '../components/FreeTrialSection';
 
 export default function ChangelogPage() {
   const containerRef = useRef(null);
+
+  /**
+   * Release notes come from the API (GET /changelogs). The bundled static file
+   * stays as a fallback: this is a public marketing page, so a backend hiccup
+   * must never leave a visitor staring at an empty timeline.
+   */
+  const [entries, setEntries] = useState(fallbackEntries);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/changelogs')
+      .then((res) => {
+        if (!cancelled && Array.isArray(res.changelogs) && res.changelogs.length > 0) {
+          setEntries(res.changelogs);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Changelog] Falling back to bundled release notes:', err.message);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   // Track vertical scroll progress across the timeline section
   const { scrollYProgress } = useScroll({
@@ -156,7 +180,7 @@ export default function ChangelogPage() {
           />
 
           <div className="space-y-16 sm:space-y-24">
-            {changelogEntries.map((entry, idx) => (
+            {entries.map((entry, idx) => (
               <div key={entry.id} className="relative md:grid md:grid-cols-12 md:gap-8 items-start group">
                 
                 {/* Glowing White Node Dot (Desktop) */}

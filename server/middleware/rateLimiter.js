@@ -30,4 +30,39 @@ const formLimiter = rateLimit({
   }
 });
 
-module.exports = { apiLimiter, formLimiter };
+/**
+ * Waitlist signups get a larger budget than the contact form: the contact form
+ * is one-off per enquiry, while a waitlist legitimately collects several
+ * addresses from the same office or campus NAT (one public IP, many people).
+ */
+const leadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many signups from this network. Please try again later.'
+  }
+});
+
+/**
+ * Credential endpoints (password login, OTP verification, Google sign-in).
+ * Deliberately much stricter than the global API limiter: these are the doors
+ * into an account, so 20 failed attempts per 15 minutes per IP is plenty for a
+ * human and useless to a guesser. The global limiter allows 10,000 so normal
+ * app browsing never trips it.
+ */
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // only failed attempts count
+  message: {
+    success: false,
+    message: 'Too many sign-in attempts. Please try again in 15 minutes.'
+  }
+});
+
+module.exports = { apiLimiter, formLimiter, leadLimiter, authRateLimiter };
