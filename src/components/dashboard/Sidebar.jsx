@@ -10,6 +10,7 @@ import {
   Users,
   Activity,
   Inbox,
+  GitCommitVertical,
   LogOut,
   ChevronDown,
   Building2,
@@ -58,7 +59,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     // Profile page is only offered to member / viewer accounts.
     ...(!isStaffOrAdmin ? [{ label: 'My Profile', path: '/dashboard/profile', icon: Settings }] : []),
     ...(isStaffOrAdmin ? [{ label: 'User Management', path: '/dashboard/users', icon: UserCog }] : []),
-    ...(isStaffOrAdmin ? [{ label: 'Lead Inbox', path: '/dashboard/leads', icon: Inbox }] : [])
+    ...(isStaffOrAdmin ? [{ label: 'Lead Inbox', path: '/dashboard/leads', icon: Inbox }] : []),
+    ...(isStaffOrAdmin ? [{ label: 'Changelog', path: '/dashboard/changelog-admin', icon: GitCommitVertical }] : [])
   ];
 
   return (

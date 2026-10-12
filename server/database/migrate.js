@@ -321,6 +321,59 @@ const migrations = [
       }
       return { status: 'applied', detail: detail.join('; ') };
     }
+  },
+
+  /**
+   * Self-service password resets.
+   *
+   * Tokens are stored as SHA-256 hashes, never in plaintext: a leaked database
+   * must not hand an attacker working reset links. `used_at` lets a token be
+   * consumed exactly once, and the index on user_id keeps cleanup cheap.
+   */
+  {
+    name: '008-password-reset-tokens',
+    async up(pool) {
+      const detail = [];
+      let touched = false;
+
+      const [tables] = await pool.query(
+        `SELECT COUNT(*) AS c FROM information_schema.tables
+          WHERE table_schema = DATABASE() AND table_name = 'password_reset_tokens'`
+      );
+
+      if (tables[0].c === 0) {
+        await pool.query(
+          `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+             id INT AUTO_INCREMENT PRIMARY KEY,
+             user_id INT NOT NULL,
+             token_hash CHAR(64) NOT NULL,
+             expires_at DATETIME NOT NULL,
+             used_at DATETIME DEFAULT NULL,
+             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+             UNIQUE KEY uq_password_reset_token (token_hash),
+             INDEX idx_password_reset_user (user_id),
+             INDEX idx_password_reset_expiry (expires_at)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+        );
+        detail.push('created password_reset_tokens');
+        touched = true;
+      }
+
+      // Clear out anything already dead so the table never accumulates history.
+      const [purged] = await pool.query(
+        'DELETE FROM password_reset_tokens WHERE expires_at < NOW() OR used_at IS NOT NULL'
+      );
+      if (purged.affectedRows > 0) {
+        detail.push(`purged ${purged.affectedRows} spent/expired token(s)`);
+        touched = true;
+      }
+
+      if (!touched) {
+        return { status: 'current', detail: 'password_reset_tokens already present and clean' };
+      }
+      return { status: 'applied', detail: detail.join('; ') };
+    }
   }
 ];
 

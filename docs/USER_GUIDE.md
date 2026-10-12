@@ -48,6 +48,23 @@ choose your account and you are signed in immediately.
 | Staff | `/admin-login` |
 | Leave | Click **Sign Out** in the top bar |
 
+### If you forget your password
+
+You do not need to contact an administrator — you can reset it yourself.
+
+1. On the sign-in page, click **Forgot your password?**
+2. Enter your email address and click **Send reset link**
+3. Open the email and click **Choose a new password**
+4. Choose a new one, then sign in with it
+
+The link works **once** and expires after **30 minutes**. Request a new one if it
+has expired.
+
+> If the email address is not registered, you will see exactly the same
+> confirmation message. That is deliberate — it stops anyone using this form to
+> discover which addresses have accounts. If you did not get a link, check your
+> spam folder, or ask an administrator to confirm your address.
+
 You stay signed in across visits. If you were ever signed out unexpectedly,
 it is usually because the account was suspended or the password was reset by an
 administrator.

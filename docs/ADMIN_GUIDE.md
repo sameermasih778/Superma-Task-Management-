@@ -55,7 +55,7 @@ prefer **Suspend**, which preserves history.
 
 The health panel is the first thing to look at when something is broken. If it
 reports the database as disconnected, no user action will fix it â€” see
-[section 9](#9-when-the-database-is-asleep).
+[section 10](#10-when-the-database-is-asleep).
 
 ---
 
@@ -151,7 +151,35 @@ survive.
 
 ---
 
-## 7. Teams and ownership
+## 7. Changelog Manager
+
+`/dashboard/changelog-admin` publishes the entries shown on the public
+**Changelog** page. It writes straight to the same table the public page reads,
+newest first, so an entry is live the moment you save it.
+
+**Writing an entry**
+- **Version tag** — for example `v1.4.0`. Must be unique; a duplicate is
+  refused with a clear message rather than failing silently
+- **Release date** — required. This is what decides the ordering, so an entry
+  without one would sort to the bottom
+- **Badge** and **colour** — the "New" / "Improved" / "Fixed" pill on the card
+- **Title** and **description** — the headline and summary
+- **Bullets** — one per line; they become the bullet list on the public entry
+- Optional: highlight title and description, a category tag, a banner title,
+  and a footnote
+
+**Editing and deleting**
+Each entry has edit and delete buttons. Deleting takes effect on the public
+changelog immediately and asks for confirmation first. Editing keeps the
+original version tag, which is the entry's identity — it cannot be changed
+after creation.
+
+> Keep entries factual and dated. The changelog is the public record of what
+> shipped, so it should reflect real releases rather than plans.
+
+---
+
+## 8. Teams and ownership
 
 Staff can manage **any** team in the workspace, regardless of who created it:
 
@@ -165,7 +193,7 @@ forges a request.
 
 ---
 
-## 8. Your responsibilities as an administrator
+## 9. Your responsibilities as an administrator
 
 Technical, but genuinely part of the job.
 
@@ -190,7 +218,7 @@ demonstration, power it on and confirm the health endpoint reports
 
 ---
 
-## 9. When the database is asleep
+## 10. When the database is asleep
 
 **Symptom.** Every sign-in fails and pages that load data show
 *"Something went wrong on our end. Please try again."* The health endpoint
@@ -211,11 +239,11 @@ Users do not need to do anything; access resumes on its own.
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Likely cause | Fix |
 | --- | --- | --- |
-| All logins fail, health shows `DISCONNECTED` | Database asleep | See section 9 |
+| All logins fail, health shows `DISCONNECTED` | Database asleep | See section 10 |
 | Google sign-in returns *"not configured on this server"* | `GOOGLE_CLIENT_ID` missing from the backend project | Add it in Vercel, then redeploy |
 | Google sign-in returns *"invalid client"* | Wrong client ID (a truncated paste) | Re-copy it and redeploy |
 | I cannot see User Management | You are not staff | Sign in at `/admin-login` |
@@ -225,7 +253,7 @@ Users do not need to do anything; access resumes on its own.
 
 ---
 
-## 11. Escalation path
+## 12. Escalation path
 
 1. Check the **System health** panel.
 2. Check the **Activity Feed** for a recent change that explains it.

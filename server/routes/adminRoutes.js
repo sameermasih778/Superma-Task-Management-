@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const leadsController = require('../controllers/leadsController');
+const changelogAdminController = require('../controllers/changelogAdminController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // All admin routes require authentication
@@ -38,6 +39,33 @@ router.delete(
   '/users/:id',
   authorizeRoles('super_admin'),
   adminController.deleteUser
+);
+
+// --- Changelog Manager (Admin, Developer & Super Admin) ---
+// The public /changelogs endpoint already serves these rows; this is the
+// editorial side that writes them.
+router.get(
+  '/changelogs',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  changelogAdminController.getAdminChangelogs
+);
+
+router.post(
+  '/changelogs',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  changelogAdminController.createChangelog
+);
+
+router.put(
+  '/changelogs/:tagId',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  changelogAdminController.updateChangelog
+);
+
+router.delete(
+  '/changelogs/:tagId',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  changelogAdminController.deleteChangelog
 );
 
 // --- Lead Inbox (Admin, Developer & Super Admin) ---

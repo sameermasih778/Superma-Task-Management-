@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const passwordResetController = require('../controllers/passwordResetController');
 const { authenticateToken } = require('../middleware/auth');
 const { avatarUpload } = require('../middleware/upload');
 const { authRateLimiter } = require('../middleware/rateLimiter');
@@ -10,6 +11,29 @@ router.post('/send-otp', authController.sendOtp);
 router.post('/verify-otp', authController.verifyOtp);
 router.post('/register', authController.register);
 router.post('/login', authRateLimiter, authController.login);
+
+/**
+ * Self-service password reset.
+ *
+ * Rate limited like any other credential entry point - otherwise this becomes a
+ * free way to spam reset mail at an address, or to brute-force tokens.
+ */
+router.post(
+  '/forgot-password',
+  authRateLimiter,
+  passwordResetController.requestPasswordReset
+);
+
+router.get(
+  '/reset-password/verify',
+  passwordResetController.verifyResetToken
+);
+
+router.post(
+  '/reset-password',
+  authRateLimiter,
+  passwordResetController.resetPassword
+);
 
 /**
  * Google sign-in. Rate limited like any other credential check, because this

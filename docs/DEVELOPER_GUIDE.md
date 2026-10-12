@@ -244,6 +244,32 @@ Guarantees enforced server-side:
 - The email must be reported **verified** by Google.
 - Suspended accounts are refused even with a valid Google identity.
 
+### Self-service password reset
+
+`server/controllers/passwordResetController.js`, with tokens in
+`password_reset_tokens` (migration 008). Four decisions are worth knowing before
+you change anything here:
+
+1. **No user enumeration.** `/forgot-password` returns the same 200 and the same
+   message whether or not the address is registered, and does comparable work
+   in both branches so response time does not leak it either.
+2. **Tokens are stored as SHA-256 hashes**, never in plaintext — a stolen
+   database dump must not yield usable reset links.
+3. **Single use and short life.** `used_at` is stamped on consumption, expiry is
+   30 minutes, and requesting a new link deletes any outstanding one. The claim
+   is `UPDATE ... WHERE used_at IS NULL` and checks `affectedRows`, so a token
+   cannot be spent twice even if two requests race.
+4. **Expiry is decided by MySQL, never in Node.** This is the subtle one:
+   Aiven stores `DATETIME` in UTC, mysql2 returns it as a plain string, and Node
+   reads that string as *local* time — in a non-UTC timezone that reports a
+   token as expired the instant it is issued. Comparisons therefore live in SQL
+   (`expires_at > NOW()`), exactly as the signup OTP flow already does. **Do not
+   reintroduce `new Date(row.expires_at)` comparisons.**
+
+In development with no SMTP configured, the API returns `devResetUrl` so the
+flow is testable. It is never returned when `SMTP_USER` is set, so production
+cannot be used to request a link against someone else's address.
+
 ### Roles
 
 `authorizeRoles(...roles)` is applied per route.
@@ -285,6 +311,9 @@ Base path: `/api/v1`. Authenticated routes take
 | `POST` | `/auth/register` | public | |
 | `POST` | `/auth/login` | public | `authRateLimiter` |
 | `POST` | `/auth/google` | public | `authRateLimiter` |
+| `POST` | `/auth/forgot-password` | public | `authRateLimiter`; never reveals whether the address exists |
+| `GET` | `/auth/reset-password/verify?token=` | public | Lets the form check the link before typing |
+| `POST` | `/auth/reset-password` | public | `authRateLimiter`; single-use token |
 | `GET` | `/auth/me` | user | Current profile |
 | `POST` | `/auth/avatar` | user | Multipart, images only, 2 MB |
 | `DELETE` | `/auth/avatar` | user | Falls back to initials |
@@ -362,6 +391,10 @@ Filters: `project_id`, `workspace_id`, `status`, `priority`, `assignee_id`,
 | `GET` | `/admin/leads/waitlist` | staff |
 | `PATCH` | `/admin/leads/waitlist/:id/status` | staff |
 | `GET` | `/admin/leads/export?type=contact\|waitlist` | staff |
+| `GET` | `/admin/changelogs` | staff |
+| `POST` | `/admin/changelogs` | staff |
+| `PUT` | `/admin/changelogs/:tagId` | staff |
+| `DELETE` | `/admin/changelogs/:tagId` | staff |
 
 ### Lead Inbox
 

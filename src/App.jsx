@@ -30,7 +30,9 @@ import ProjectsPage from './pages/ProjectsPage';
 import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminLeadsPage from './pages/AdminLeadsPage';
+import AdminChangelogPage from './pages/AdminChangelogPage';
 import ActivityPage from './pages/ActivityPage';
 import CalendarPage from './pages/CalendarPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -85,6 +87,7 @@ function MainLayout() {
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/staff-portal" element={<AdminLoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/blogs" element={<BlogPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
@@ -111,6 +114,7 @@ function MainLayout() {
               <Route element={<AdminRoute />}>
                 <Route path="users" element={<AdminUsersPage />} />
         <Route path="leads" element={<AdminLeadsPage />} />
+        <Route path="changelog-admin" element={<AdminChangelogPage />} />
               </Route>
               <Route path="activity" element={<ActivityPage />} />
             </Route>

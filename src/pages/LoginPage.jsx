@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Mail, ArrowRight, ShieldAlert, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 // Google Identity Services. Set VITE_GOOGLE_CLIENT_ID to enable the button;
 // without it the page simply hides the Google option instead of showing a
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -229,6 +231,18 @@ export default function LoginPage() {
               )}
             </motion.button>
           </motion.div>
+
+          {/* Self-service password reset - without this, a user who forgets
+              their password can only be helped by an administrator. */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-xs font-medium text-zinc-500 transition hover:text-white"
+            >
+              Forgot your password?
+            </button>
+          </div>
         </form>
 
         {/* Footer Link & SSL Security Indicator */}
@@ -251,6 +265,11 @@ export default function LoginPage() {
           </div>
         </motion.div>
       </motion.div>
+
+      <ForgotPasswordModal
+        open={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 }
