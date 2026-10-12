@@ -1,17 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Clock, Calendar, Share2, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { blogPosts } from '../data/blogData';
+import api from '../utils/api';
 import logoImg from '../assets/logo.png';
 import FreeTrialSection from '../components/FreeTrialSection';
 
 export default function BlogPost() {
   const { slug } = useParams();
-  const post = blogPosts.find((p) => p.slug === slug);
+  const initialPost = blogPosts.find((p) => p.slug === slug) || null;
+  const [post, setPost] = useState(initialPost);
+  const [loading, setLoading] = useState(!initialPost);
+
+  useEffect(() => {
+    let active = true;
+    api.get(`/blogs/${slug}`)
+      .then((data) => {
+        if (active && data.blog) {
+          setPost(data.blog);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [slug]);
+
+  if (!loading && !post) {
+    return <Navigate to="/blogs" replace />;
+  }
 
   if (!post) {
-    return <Navigate to="/blogs" replace />;
+    return null;
   }
 
   const similarPosts = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 3);
@@ -60,13 +82,13 @@ export default function BlogPost() {
         <div className="flex items-center justify-between pb-8 mb-10 border-b border-white/10">
           <div className="flex items-center gap-3.5">
             <img
-              src={post.author.avatar}
-              alt={post.author.name}
+              src={post.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'}
+              alt={post.author?.name || 'Author'}
               className="w-12 h-12 rounded-2xl object-cover border border-white/20"
             />
             <div>
-              <h3 className="text-sm font-bold text-white">{post.author.name}</h3>
-              <p className="text-xs text-zinc-400">{post.author.role} <span className="text-zinc-600">•</span> {post.author.handle}</p>
+              <h3 className="text-sm font-bold text-white">{post.author?.name || post.author_name || 'Suprema Team'}</h3>
+              <p className="text-xs text-zinc-400">{post.author?.role || post.author_role || 'Contributor'} <span className="text-zinc-600">•</span> {post.author?.handle || post.author_handle || '@suprema'}</p>
             </div>
           </div>
 
@@ -100,7 +122,7 @@ export default function BlogPost() {
           />
           <img src={logoImg} alt="Suprema Logo" className="h-16 w-auto object-contain mb-6 relative z-10" />
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line">
-            {post.bannerTitle}
+            {post.bannerTitle || post.banner_title || post.title}
           </h2>
         </div>
 
@@ -111,7 +133,7 @@ export default function BlogPost() {
 
         {/* Content Sections */}
         <div className="space-y-10 text-zinc-300 text-base sm:text-lg leading-relaxed">
-          {post.sections.map((section, idx) => (
+          {(Array.isArray(post.sections) ? post.sections : []).map((section, idx) => (
             <section key={idx} className="space-y-4">
               <h3 className="text-xl sm:text-2xl font-bold text-white font-tight">
                 {section.heading}

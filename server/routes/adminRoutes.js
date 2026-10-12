@@ -3,6 +3,7 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const leadsController = require('../controllers/leadsController');
 const changelogAdminController = require('../controllers/changelogAdminController');
+const blogAdminController = require('../controllers/blogAdminController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // All admin routes require authentication
@@ -106,6 +107,47 @@ router.post(
   '/notifications/broadcast',
   authorizeRoles('super_admin', 'admin', 'developer'),
   adminController.broadcastNotification
+);
+
+// --- Platform Overview (Admin, Developer & Super Admin) ---
+// Workspace & project oversight + platform-level aggregated stats.
+router.get(
+  '/overview',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  blogAdminController.getPlatformOverview
+);
+
+// --- Blog CMS (Admin, Developer & Super Admin) ---
+// The public /blog page reads from this same table; publishing here is
+// immediately live on the marketing site.
+router.get(
+  '/blogs',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  blogAdminController.getAdminBlogs
+);
+
+router.get(
+  '/blogs/:id',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  blogAdminController.getAdminBlogById
+);
+
+router.post(
+  '/blogs',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  blogAdminController.createBlog
+);
+
+router.put(
+  '/blogs/:id',
+  authorizeRoles('super_admin', 'admin', 'developer'),
+  blogAdminController.updateBlog
+);
+
+router.delete(
+  '/blogs/:id',
+  authorizeRoles('super_admin', 'admin'),
+  blogAdminController.deleteBlog
 );
 
 module.exports = router;

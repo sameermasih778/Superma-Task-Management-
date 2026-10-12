@@ -1,12 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BookOpen, ChevronRight, ArrowRight } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { blogPosts } from '../data/blogData';
+import api from '../utils/api';
 
 export default function BlogsSection() {
-  const featured = blogPosts.slice(0, 3);
+  const [posts, setPosts] = useState(blogPosts);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/blogs')
+      .then((data) => {
+        if (active && data.blogs && data.blogs.length > 0) {
+          setPosts(data.blogs);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const featured = posts.slice(0, 3);
 
   return (
     <section id="blogs" className="py-24 md:py-32 bg-black text-white relative overflow-hidden border-t border-white/10">
@@ -77,7 +92,7 @@ export default function BlogsSection() {
 
                   {/* Overlay Banner Title */}
                   <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line">
-                    {blog.bannerTitle}
+                    {blog.bannerTitle || blog.banner_title || blog.title}
                   </h3>
                 </div>
 

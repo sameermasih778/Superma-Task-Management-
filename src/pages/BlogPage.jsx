@@ -1,34 +1,51 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Search, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
 import { blogPosts, authors } from '../data/blogData';
+import api from '../utils/api';
 import logoImg from '../assets/small logo.svg';
 import smallLogo from '../assets/small logo.svg';
 import FreeTrialSection from '../components/FreeTrialSection';
 
 export default function BlogPage() {
+  const [posts, setPosts] = useState(blogPosts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  useEffect(() => {
+    let active = true;
+    api.get('/blogs')
+      .then((data) => {
+        if (active && data.blogs && data.blogs.length > 0) {
+          setPosts(data.blogs);
+        }
+      })
+      .catch(() => {
+        // Keeps static blogPosts fallback
+      });
+    return () => { active = false; };
+  }, []);
 
   const categories = ['All', 'Efficiency', 'Productivity', 'Collaboration', 'Task Management'];
 
   // Filter posts based on search query and category
   const filteredPosts = useMemo(() => {
-    return blogPosts.filter((post) => {
+    return posts.filter((post) => {
+      const authorName = post.author?.name || post.author_name || '';
       const matchesSearch =
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.name.toLowerCase().includes(searchQuery.toLowerCase());
+        (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        authorName.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCategory =
         selectedCategory === 'All' || post.category === selectedCategory;
 
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [posts, searchQuery, selectedCategory]);
 
-  const featuredPosts = blogPosts.filter((p) => p.featured);
+  const featuredPosts = posts.filter((p) => p.featured);
 
   return (
     <div className="bg-black text-white min-h-screen pt-24 sm:pt-32 md:pt-36 pb-16 overflow-hidden relative">

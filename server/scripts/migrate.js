@@ -16,6 +16,8 @@ const { runMigrations } = require('../database/migrate');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+const useSsl = /^(1|true|yes)$/i.test(String(process.env.DB_SSL || ''));
+
 (async () => {
   console.log('\n🔧 Running Suprema schema migrations...\n');
 
@@ -24,7 +26,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
     port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'suprema_db'
+    database: process.env.DB_NAME || 'suprema_db',
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
   });
 
   console.log(`📌 Connected to Database: '${process.env.DB_NAME}' on ${process.env.DB_HOST}:${process.env.DB_PORT}\n`);

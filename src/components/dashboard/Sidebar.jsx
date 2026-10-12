@@ -19,7 +19,9 @@ import {
   UserCog,
   Settings,
   Calendar,
-  BarChart3
+  BarChart3,
+  FileText,
+  Globe2
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
@@ -60,7 +62,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     ...(!isStaffOrAdmin ? [{ label: 'My Profile', path: '/dashboard/profile', icon: Settings }] : []),
     ...(isStaffOrAdmin ? [{ label: 'User Management', path: '/dashboard/users', icon: UserCog }] : []),
     ...(isStaffOrAdmin ? [{ label: 'Lead Inbox', path: '/dashboard/leads', icon: Inbox }] : []),
-    ...(isStaffOrAdmin ? [{ label: 'Changelog', path: '/dashboard/changelog-admin', icon: GitCommitVertical }] : [])
+    ...(isStaffOrAdmin ? [{ label: 'Changelog', path: '/dashboard/changelog-admin', icon: GitCommitVertical }] : []),
+    ...(isStaffOrAdmin ? [{ label: 'Blog CMS', path: '/dashboard/blog-admin', icon: FileText }] : []),
+    ...(isStaffOrAdmin ? [{ label: 'Platform Overview', path: '/dashboard/platform-overview', icon: Globe2 }] : []),
   ];
 
   return (

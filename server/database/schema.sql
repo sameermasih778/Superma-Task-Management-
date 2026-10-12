@@ -290,3 +290,37 @@ CREATE TABLE IF NOT EXISTS pricing_plans (
     UNIQUE KEY uq_plan_id (plan_id),
     INDEX idx_plan_sort (sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 17. BLOG POSTS TABLE (Admin CMS + Public /blog page)
+-- Staff write via /dashboard/blog-admin; the public BlogPage reads the same rows.
+CREATE TABLE IF NOT EXISTS blogs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    banner_title VARCHAR(255) DEFAULT NULL,
+    excerpt TEXT,
+    content LONGTEXT,
+    sections JSON DEFAULT NULL,
+    category VARCHAR(100) DEFAULT NULL,
+    category_color VARCHAR(50) DEFAULT 'text-emerald-400',
+    category_bg VARCHAR(100) DEFAULT 'bg-emerald-500/10 border-emerald-500/20',
+    date VARCHAR(50) DEFAULT NULL,
+    author_name VARCHAR(100) DEFAULT NULL,
+    author_role VARCHAR(100) DEFAULT NULL,
+    author_handle VARCHAR(100) DEFAULT NULL,
+    author_bio TEXT DEFAULT NULL,
+    author_avatar VARCHAR(500) DEFAULT NULL,
+    cover_image VARCHAR(500) DEFAULT NULL,
+    tags JSON DEFAULT NULL,
+    featured TINYINT(1) NOT NULL DEFAULT 0,
+    read_time VARCHAR(50) DEFAULT '5 min read',
+    status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published',
+    published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_blog_slug (slug),
+    INDEX idx_blog_status (status),
+    INDEX idx_blog_category (category),
+    INDEX idx_blog_featured (featured),
+    INDEX idx_blog_published (published_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

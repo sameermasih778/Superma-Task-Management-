@@ -374,6 +374,162 @@ const migrations = [
       }
       return { status: 'applied', detail: detail.join('; ') };
     }
+  },
+
+  {
+    /**
+     * blogs table & columns schema synchronization.
+     *
+     * Ensures all fields expected by Blog CMS (status, published_at, updated_at,
+     * content, cover_image, tags, etc.) exist on the blogs table, and backfills
+     * legacy rows so they immediately appear in the admin CMS as published posts.
+     */
+    name: '009-blogs-table-and-schema',
+    async up(pool) {
+      const detail = [];
+
+      const [tables] = await pool.query(
+        `SELECT COUNT(*) AS c FROM information_schema.tables
+          WHERE table_schema = DATABASE() AND table_name = 'blogs'`
+      );
+
+      if (tables[0].c === 0) {
+        await pool.query(
+          `CREATE TABLE IF NOT EXISTS blogs (
+             id INT AUTO_INCREMENT PRIMARY KEY,
+             title VARCHAR(255) NOT NULL,
+             slug VARCHAR(255) NOT NULL,
+             banner_title VARCHAR(255) DEFAULT NULL,
+             excerpt TEXT,
+             content LONGTEXT,
+             sections JSON DEFAULT NULL,
+             category VARCHAR(100) DEFAULT NULL,
+             category_color VARCHAR(50) DEFAULT 'text-emerald-400',
+             category_bg VARCHAR(100) DEFAULT 'bg-emerald-500/10 border-emerald-500/20',
+             date VARCHAR(50) DEFAULT NULL,
+             author_name VARCHAR(100) DEFAULT NULL,
+             author_role VARCHAR(100) DEFAULT NULL,
+             author_handle VARCHAR(100) DEFAULT NULL,
+             author_bio TEXT DEFAULT NULL,
+             author_avatar VARCHAR(500) DEFAULT NULL,
+             cover_image VARCHAR(500) DEFAULT NULL,
+             tags JSON DEFAULT NULL,
+             featured TINYINT(1) NOT NULL DEFAULT 0,
+             read_time VARCHAR(50) DEFAULT '5 min read',
+             status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published',
+             published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             UNIQUE KEY uq_blog_slug (slug),
+             INDEX idx_blog_status (status),
+             INDEX idx_blog_category (category),
+             INDEX idx_blog_featured (featured),
+             INDEX idx_blog_published (published_at)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+        );
+        detail.push('created blogs table');
+      } else {
+        const [columns] = await pool.query('SHOW COLUMNS FROM blogs');
+        const colNames = columns.map((c) => c.Field);
+
+        const toAdd = [];
+        if (!colNames.includes('status')) {
+          toAdd.push("ADD COLUMN status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published'");
+        }
+        if (!colNames.includes('published_at')) {
+          toAdd.push('ADD COLUMN published_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+        }
+        if (!colNames.includes('updated_at')) {
+          toAdd.push('ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        }
+        if (!colNames.includes('content')) {
+          toAdd.push('ADD COLUMN content LONGTEXT DEFAULT NULL');
+        }
+        if (!colNames.includes('cover_image')) {
+          toAdd.push('ADD COLUMN cover_image VARCHAR(500) DEFAULT NULL');
+        }
+        if (!colNames.includes('tags')) {
+          toAdd.push('ADD COLUMN tags JSON DEFAULT NULL');
+        }
+        if (!colNames.includes('banner_title')) {
+          toAdd.push('ADD COLUMN banner_title VARCHAR(255) DEFAULT NULL');
+        }
+        if (!colNames.includes('category_color')) {
+          toAdd.push("ADD COLUMN category_color VARCHAR(50) DEFAULT 'text-emerald-400'");
+        }
+        if (!colNames.includes('category_bg')) {
+          toAdd.push("ADD COLUMN category_bg VARCHAR(100) DEFAULT 'bg-emerald-500/10 border-emerald-500/20'");
+        }
+        if (!colNames.includes('author_handle')) {
+          toAdd.push('ADD COLUMN author_handle VARCHAR(100) DEFAULT NULL');
+        }
+        if (!colNames.includes('author_bio')) {
+          toAdd.push('ADD COLUMN author_bio TEXT DEFAULT NULL');
+        }
+        if (!colNames.includes('date')) {
+          toAdd.push('ADD COLUMN date VARCHAR(50) DEFAULT NULL');
+        }
+        if (!colNames.includes('sections')) {
+          toAdd.push('ADD COLUMN sections JSON DEFAULT NULL');
+        }
+
+        if (toAdd.length > 0) {
+          await pool.query(`ALTER TABLE blogs ${toAdd.join(', ')}`);
+          detail.push(`added ${toAdd.length} missing column(s)`);
+        }
+
+        await pool.query("ALTER TABLE blogs MODIFY author_role VARCHAR(100) NULL DEFAULT 'Contributor'");
+        await pool.query("ALTER TABLE blogs MODIFY date VARCHAR(50) NULL DEFAULT NULL");
+        await pool.query("ALTER TABLE blogs MODIFY sections JSON NULL DEFAULT NULL");
+      }
+
+      // Backfill existing rows with content and status if missing
+      try {
+        const [rows] = await pool.query('SELECT id, sections, content, status, created_at FROM blogs');
+        let backfilled = 0;
+        for (const row of rows) {
+          let updateContent = row.content;
+          let updateStatus = row.status || 'published';
+          let changed = false;
+
+          if (!row.content && row.sections) {
+            try {
+              const parsed = typeof row.sections === 'string' ? JSON.parse(row.sections) : row.sections;
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                updateContent = parsed
+                  .map((s) => `## ${s.heading || 'Section'}\n\n${s.content || ''}`)
+                  .join('\n\n');
+                changed = true;
+              }
+            } catch (_) {}
+          }
+
+          if (!row.status) {
+            updateStatus = 'published';
+            changed = true;
+          }
+
+          if (changed) {
+            await pool.query(
+              'UPDATE blogs SET content = ?, status = ? WHERE id = ?',
+              [updateContent, updateStatus, row.id]
+            );
+            backfilled++;
+          }
+        }
+
+        if (backfilled > 0) {
+          detail.push(`backfilled ${backfilled} blog row(s)`);
+        }
+      } catch (err) {
+        detail.push(`backfill notice: ${err.message}`);
+      }
+
+      if (detail.length === 0) {
+        return { status: 'current', detail: 'blogs table up to date' };
+      }
+      return { status: 'applied', detail: detail.join('; ') };
+    }
   }
 ];
 
