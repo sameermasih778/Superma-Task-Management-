@@ -30,6 +30,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminLeadsPage from './pages/AdminLeadsPage';
 import ActivityPage from './pages/ActivityPage';
 import CalendarPage from './pages/CalendarPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -109,6 +110,7 @@ function MainLayout() {
               <Route path="teams" element={<TeamsPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="users" element={<AdminUsersPage />} />
+        <Route path="leads" element={<AdminLeadsPage />} />
               </Route>
               <Route path="activity" element={<ActivityPage />} />
             </Route>

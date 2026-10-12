@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Users,
   Activity,
+  Inbox,
   LogOut,
   ChevronDown,
   Building2,
@@ -56,7 +57,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     // Staff use a fixed role emblem and have no picture to change, so the
     // Profile page is only offered to member / viewer accounts.
     ...(!isStaffOrAdmin ? [{ label: 'My Profile', path: '/dashboard/profile', icon: Settings }] : []),
-    ...(isStaffOrAdmin ? [{ label: 'User Management', path: '/dashboard/users', icon: UserCog }] : [])
+    ...(isStaffOrAdmin ? [{ label: 'User Management', path: '/dashboard/users', icon: UserCog }] : []),
+    ...(isStaffOrAdmin ? [{ label: 'Lead Inbox', path: '/dashboard/leads', icon: Inbox }] : [])
   ];
 
   return (

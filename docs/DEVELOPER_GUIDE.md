@@ -357,6 +357,28 @@ Filters: `project_id`, `workspace_id`, `status`, `priority`, `assignee_id`,
 | `PATCH` | `/admin/users/:id/status` | staff |
 | `DELETE` | `/admin/users/:id` | `super_admin` only |
 | `POST` | `/admin/notifications/broadcast` | staff |
+| `GET` | `/admin/leads/contact` | staff |
+| `PATCH` | `/admin/leads/contact/:id/status` | staff |
+| `GET` | `/admin/leads/waitlist` | staff |
+| `PATCH` | `/admin/leads/waitlist/:id/status` | staff |
+| `GET` | `/admin/leads/export?type=contact\|waitlist` | staff |
+
+### Lead Inbox
+
+`server/controllers/leadsController.js` surfaces the marketing funnels to staff
+at `/dashboard/leads`. Before it existed the contact form and waitlist were
+writing rows that **no one could read**.
+
+The CSV export deliberately does not use the shared `api` helper: that helper
+parses every response as JSON, which would discard the file. It fetches the raw
+response as a blob instead. Cell values are quoted and embedded quotes doubled,
+because a customer writing `Smith, John` otherwise shifts every column in Excel;
+a UTF-8 BOM is included so accented names are not mangled.
+
+Leads are platform-level rather than workspace-level, so status changes are
+deliberately **not** written to `activity_logs` — that table is keyed by
+`workspace_id`, and inventing a workspace for the entry would produce a
+misleading audit trail. If lead auditing is ever needed, add a dedicated table.
 
 ### Marketing (public)
 
