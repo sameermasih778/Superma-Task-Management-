@@ -336,7 +336,7 @@ Filters: `project_id`, `workspace_id`, `status`, `priority`, `assignee_id`,
 | `DELETE` | `/comments/:id` | author only | Enforced: "You can only delete your own comments" |
 | `GET` | `/attachments?task_id=` | user | |
 | `POST` | `/attachments` | user | Multipart, size-capped by the platform |
-| `DELETE` | `/attachments/:id` | ⚠️ **any user** | **No ownership check — see section 11.1** |
+| `DELETE` | `/attachments/:id` | uploader, workspace owner/admin, or staff | Ownership enforced server-side |
 
 ### Notifications and activity
 
@@ -345,7 +345,7 @@ Filters: `project_id`, `workspace_id`, `status`, `priority`, `assignee_id`,
 | `GET` | `/notifications` | user |
 | `PATCH` | `/notifications/:id/read` | user |
 | `PATCH` | `/notifications/read-all` | user |
-| `GET` | `/activity` | ⚠️ **any user** | The `/dashboard/activity` page is staff-only in the UI, but the endpoint is not role-gated — see section 11.1 |
+| `GET` | `/activity` | `super_admin`, `admin`, `developer` | Role-gated to match the staff-only page |
 
 ### Admin
 
@@ -440,20 +440,21 @@ in priority order:
 Note that the backend has no test runner configured at all, so this also means
 choosing one and wiring it into `npm test`.
 
-### 11.1 Known authorisation gaps
+### 11.1 Known authorisation gaps — both fixed
 
-Found while documenting the API. Both are **read/delete** issues rather than
-data exposure, but they contradict the rule in section 10 that hiding a control
-is never treated as access control — so they are recorded here rather than
-quietly fixed.
+Two gaps were found while documenting the API, and both were closed in the same
+day. They are recorded here rather than quietly deleted, because "we found a
+vulnerability during a documentation audit and fixed it" is worth more than a
+guide that pretends the problem never existed.
 
-| Endpoint | Gap | Suggested fix |
+| Endpoint | Gap found | Fix |
 | --- | --- | --- |
-| `DELETE /api/v1/attachments/:id` | **No ownership check.** Any authenticated user can delete any attachment in any workspace by guessing an ID. It does not even verify workspace membership. | Load the row joined to its workspace, then allow the uploader, a workspace `owner`/`admin`, or staff — mirroring `deleteComment`, which already enforces "you can only delete your own comments". |
-| `GET /api/v1/activity` | Requires authentication but **not a staff role**, while the page that uses it is staff-only. Any member can read the workspace activity log. | Add `authorizeRoles('super_admin', 'admin', 'developer')` to the route, matching the UI. |
+| `DELETE /api/v1/attachments/:id` | **No ownership check.** Any authenticated user could delete any attachment in any workspace by supplying its ID; workspace membership was never even verified. | The row is now loaded joined to its workspace, and deletion is allowed only for the uploader, a workspace `owner`/`admin`, or staff. Mirrors the rule `deleteComment` already enforced. |
+| `GET /api/v1/activity` | Required authentication but **not a staff role**, while the page using it was staff-only — so any member could read the audit trail. | `authorizeRoles('super_admin', 'admin', 'developer')` added to the route, matching the UI. |
 
-Neither is exploitable without a valid account, but both should be closed before
-the project is presented as authorisation-complete.
+Verified against the running API with real rows: a non-uploader receives `403`,
+the uploader and staff both receive `200`, and a member receives `403` on the
+activity feed while staff pass through.
 
 ---
 

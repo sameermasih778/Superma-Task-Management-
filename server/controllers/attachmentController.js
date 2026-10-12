@@ -96,8 +96,23 @@ const getTaskAttachments = async (req, res, next) => {
 const deleteAttachment = async (req, res, next) => {
   try {
     const attachmentId = req.params.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
 
-    const [existing] = await pool.query('SELECT filename, file_path FROM task_attachments WHERE id = ?', [attachmentId]);
+    /**
+     * Load the attachment together with the workspace it lives in. Every value
+     * used to make the authorisation decision below comes from the database -
+     * never from the request - so a caller cannot influence it.
+     */
+    const [existing] = await pool.query(
+      `SELECT a.user_id AS uploader_id, a.file_path, p.workspace_id
+         FROM task_attachments a
+         JOIN tasks    t ON t.id = a.task_id
+         JOIN projects p ON p.id = t.project_id
+        WHERE a.id = ?`,
+      [attachmentId]
+    );
+
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -105,10 +120,40 @@ const deleteAttachment = async (req, res, next) => {
       });
     }
 
+    const attachment = existing[0];
+
+    /**
+     * Who may delete an attachment:
+     *   - the member who uploaded it
+     *   - an owner or admin of the workspace it belongs to
+     *   - any staff account (super_admin / admin / developer)
+     *
+     * Without this check any authenticated user could delete any file in any
+     * workspace simply by supplying its ID.
+     */
+    const isStaff = ['super_admin', 'admin', 'developer'].includes(userRole);
+    let isWorkspaceManager = false;
+
+    if (!isStaff && attachment.uploader_id !== userId) {
+      const [membership] = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?',
+        [attachment.workspace_id, userId]
+      );
+      const workspaceRole = membership[0]?.role;
+      isWorkspaceManager = workspaceRole === 'owner' || workspaceRole === 'admin';
+    }
+
+    if (!isStaff && attachment.uploader_id !== userId && !isWorkspaceManager) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You can only delete attachments that you uploaded.'
+      });
+    }
+
     // Remove the stored object (Cloudinary URL or legacy local file). Cleanup
     // is best-effort and must never fail the request.
     try {
-      await removeStoredAsset(existing[0].file_path);
+      await removeStoredAsset(attachment.file_path);
     } catch (cleanupError) {
       console.warn('[Attachment] Could not remove stored file:', cleanupError.message);
     }
