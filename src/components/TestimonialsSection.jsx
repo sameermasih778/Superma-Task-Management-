@@ -129,7 +129,7 @@ export default function TestimonialsSection() {
                     <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight leading-snug">
                       {item.author}
                     </h3>
-                    <p className="text-[11px] text-zinc-500 font-normal mt-0.5">
+                    <p className="text-[11px] text-zinc-400 font-normal mt-0.5">
                       {item.role}
                     </p>
                   </div>

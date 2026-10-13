@@ -140,7 +140,7 @@ export default function FeatureShowcase() {
                       Current
                     </span>
                   </div>
-                  <span className="text-[11px] text-zinc-500 font-mono flex-shrink-0">Dec 16, 05:00 - 19:00</span>
+                  <span className="text-[11px] text-zinc-400 font-mono flex-shrink-0">Dec 16, 05:00 - 19:00</span>
                 </div>
 
                 {/* Assignee 2 */}
@@ -151,7 +151,7 @@ export default function FeatureShowcase() {
                     </div>
                     <span className="text-xs font-semibold text-white truncate">Emelle</span>
                   </div>
-                  <span className="text-[11px] text-zinc-500 font-mono flex-shrink-0">Dec 20, 18:00 - 23:50</span>
+                  <span className="text-[11px] text-zinc-400 font-mono flex-shrink-0">Dec 20, 18:00 - 23:50</span>
                 </div>
               </div>
 

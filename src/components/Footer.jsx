@@ -73,9 +73,9 @@ export default function Footer() {
 
             {/* Column 2: Quick Navigation */}
             <div className="md:col-span-3">
-              <h4 className="text-sm font-bold text-white mb-4 tracking-tight">
+              <h3 className="text-sm font-bold text-white mb-4 tracking-tight">
                 Quick Navigation
-              </h4>
+              </h3>
               <ul className="space-y-3 text-sm text-zinc-400 font-normal">
                 <li><Link to="/#product-overview" className="hover:text-white transition-colors">Product Overview</Link></li>
                 <li><Link to="/#features-showcase" className="hover:text-white transition-colors">Features</Link></li>
@@ -87,9 +87,9 @@ export default function Footer() {
 
             {/* Column 3: All Pages */}
             <div className="md:col-span-2">
-              <h4 className="text-sm font-bold text-white mb-4 tracking-tight">
+              <h3 className="text-sm font-bold text-white mb-4 tracking-tight">
                 All Pages
-              </h4>
+              </h3>
               <ul className="space-y-3 text-sm text-zinc-400 font-normal">
                 <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
                 <li><Link to="/waitlist" className="hover:text-white transition-colors">Waitlist</Link></li>
@@ -102,9 +102,9 @@ export default function Footer() {
 
             {/* Column 4: Social Handles */}
             <div className="md:col-span-2">
-              <h4 className="text-sm font-bold text-white mb-4 tracking-tight">
+              <h3 className="text-sm font-bold text-white mb-4 tracking-tight">
                 Social Handles
-              </h4>
+              </h3>
               <div className="flex items-center gap-2.5">
                 <a
                   href="https://linkedin.com"
@@ -144,12 +144,12 @@ export default function Footer() {
 
           {/* Bottom Divider Line & Copyright Row */}
           <div className="border-t border-white/10 pt-6 mt-10 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 font-normal gap-4 relative z-10">
-            <div className="text-xs sm:text-sm hover:text-white transition-colors">
+            <div className="text-xs sm:text-sm text-zinc-400 hover:text-white transition-colors">
               © 2024 All rights reserved.
             </div>
 
             <div>
-              <Link to="/privacy" className="text-xs sm:text-sm hover:text-white transition-colors">
+              <Link to="/privacy" className="text-xs sm:text-sm text-zinc-400 hover:text-white transition-colors">
                 Privacy Policy
               </Link>
             </div>

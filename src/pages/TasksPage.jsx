@@ -575,7 +575,7 @@ export default function TasksPage() {
                     <td className="p-3.5">
                       <span className="font-mono text-zinc-300">
                         {t.actual_hours || 0}h
-                        <span className="text-zinc-500 text-[10px]"> / {t.estimated_hours || 0}h</span>
+                        <span className="text-zinc-400 text-[10px]"> / {t.estimated_hours || 0}h</span>
                       </span>
                     </td>
 

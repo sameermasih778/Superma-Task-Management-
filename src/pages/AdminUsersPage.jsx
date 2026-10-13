@@ -636,7 +636,7 @@ export default function AdminUsersPage() {
                               <span className="ml-1.5 text-[9px] text-indigo-400 font-semibold">(you)</span>
                             )}
                           </p>
-                          <p className="text-zinc-500 text-[10px]">{u.email}</p>
+                          <p className="text-zinc-400 text-[10px]">{u.email}</p>
                         </div>
                       </div>
                     </td>

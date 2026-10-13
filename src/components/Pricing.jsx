@@ -200,6 +200,11 @@ export default function Pricing() {
                     <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
                       <button
                         onClick={() => setBilledYearly(!billedYearly)}
+                        role="switch"
+                        aria-checked={billedYearly}
+                        // The knob is a bare div, so the button has no text of
+                        // its own; this is its only accessible name.
+                        aria-label="Bill yearly"
                         className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors ${
                           billedYearly ? 'bg-zinc-700' : 'bg-zinc-900 border border-white/10'
                         }`}
@@ -292,7 +297,7 @@ export default function Pricing() {
                   <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-zinc-400 whitespace-nowrap">
                     <IconComp className="w-4 h-4 text-zinc-300" />
                     <span className="text-zinc-300">{item.label}</span>
-                    <span className="text-zinc-600 ml-5">â€¢</span>
+                    <span className="text-zinc-400 ml-5">â€¢</span>
                   </div>
                 );
               })}

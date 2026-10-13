@@ -136,11 +136,11 @@ export default function ProductOverview() {
 
                 {/* Sections */}
                 <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium cursor-pointer">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium cursor-pointer">
                     <span>Workspace</span>
                     <ChevronRight className="w-3 h-3 text-zinc-600" />
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium cursor-pointer">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium cursor-pointer">
                     <span>Favorites</span>
                     <ChevronRight className="w-3 h-3 text-zinc-600" />
                   </div>
@@ -148,27 +148,27 @@ export default function ProductOverview() {
 
                 {/* Teams */}
                 <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium">
                     <span>Your teams</span>
                     <ChevronDown className="w-3 h-3 text-zinc-600" />
                   </div>
                   <div className="space-y-1 pl-1">
                     <div className="p-1.5 rounded text-zinc-200 flex items-center justify-between hover:bg-zinc-900 cursor-pointer">
                       <span className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded bg-blue-600 flex items-center justify-center text-[8px]">▶</span> Personal
+                        <span className="w-2.5 h-2.5 rounded bg-blue-600 flex items-center justify-center text-[8px] text-white">▶</span> Personal
                       </span>
                       <ChevronRight className="w-3 h-3 text-zinc-600" />
                     </div>
                     <div className="p-1.5 rounded text-zinc-400 flex items-center justify-between hover:bg-zinc-900 cursor-pointer">
                       <span className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded bg-purple-600 flex items-center justify-center text-[8px]">📄</span> Templates
+                        <span className="w-2.5 h-2.5 rounded bg-purple-600 flex items-center justify-center text-[8px] text-white">📄</span> Templates
                       </span>
                       <ChevronRight className="w-3 h-3 text-zinc-600" />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium cursor-pointer pt-1">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium cursor-pointer pt-1">
                   <span>Try</span>
                   <ChevronRight className="w-3 h-3 text-zinc-600" />
                 </div>
@@ -201,7 +201,7 @@ export default function ProductOverview() {
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-400/20 border border-amber-400 flex items-center justify-center">
                         <span className="w-1 h-1 rounded-full bg-amber-400" />
                       </span> 
-                      In Progress <span className="text-zinc-500">2</span>
+                      In Progress <span className="text-zinc-400">2</span>
                     </span>
                     <Plus className="w-3.5 h-3.5 text-zinc-600 hover:text-white cursor-pointer" />
                   </div>
@@ -210,15 +210,15 @@ export default function ProductOverview() {
                     <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60 hover:bg-zinc-900/80 transition-colors">
                       <div className="flex items-center gap-3">
                         <Signal className="w-3 h-3 text-zinc-600" />
-                        <span className="text-zinc-500 font-mono text-[11px]">{t.id}</span>
+                        <span className="text-zinc-400 font-mono text-[11px]">{t.id}</span>
                         <span className="w-2 h-2 rounded-full bg-amber-400" />
                         <span className="text-zinc-200 font-medium">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="bg-zinc-900/80 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          <span className="text-zinc-600">::</span> {t.tag}
+                          <span className="text-zinc-400">::</span> {t.tag}
                         </span>
-                        <span className="text-zinc-500 text-[11px]">{t.date}</span>
+                        <span className="text-zinc-400 text-[11px]">{t.date}</span>
                         <User className="w-3 h-3 text-zinc-600" />
                       </div>
                     </div>
@@ -229,7 +229,7 @@ export default function ProductOverview() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-zinc-300 font-semibold text-[11px]">
                     <span className="flex items-center gap-2">
-                      <Circle className="w-3 h-3 text-zinc-400" /> Todo <span className="text-zinc-500">2</span>
+                      <Circle className="w-3 h-3 text-zinc-400" /> Todo <span className="text-zinc-400">2</span>
                     </span>
                     <Plus className="w-3.5 h-3.5 text-zinc-600 hover:text-white cursor-pointer" />
                   </div>
@@ -238,15 +238,15 @@ export default function ProductOverview() {
                     <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60 hover:bg-zinc-900/80 transition-colors">
                       <div className="flex items-center gap-3">
                         <Signal className="w-3 h-3 text-zinc-600" />
-                        <span className="text-zinc-500 font-mono text-[11px]">{t.id}</span>
+                        <span className="text-zinc-400 font-mono text-[11px]">{t.id}</span>
                         <Circle className="w-2.5 h-2.5 text-zinc-400" />
                         <span className="text-zinc-300">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="bg-zinc-900/80 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          <span className="text-zinc-600">::</span> {t.tag}
+                          <span className="text-zinc-400">::</span> {t.tag}
                         </span>
-                        <span className="text-zinc-500 text-[11px]">{t.date}</span>
+                        <span className="text-zinc-400 text-[11px]">{t.date}</span>
                         <User className="w-3 h-3 text-zinc-600" />
                       </div>
                     </div>
@@ -255,9 +255,9 @@ export default function ProductOverview() {
 
                 {/* Group 3: Backlog */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-zinc-500 font-semibold text-[11px]">
+                  <div className="flex items-center justify-between text-zinc-400 font-semibold text-[11px]">
                     <span className="flex items-center gap-2">
-                      <Circle className="w-3 h-3 text-zinc-600 stroke-dasharray" /> Backlog <span className="text-zinc-600">2</span>
+                      <Circle className="w-3 h-3 text-zinc-600 stroke-dasharray" /> Backlog <span className="text-zinc-400">2</span>
                     </span>
                     <Plus className="w-3.5 h-3.5 text-zinc-600 hover:text-white cursor-pointer" />
                   </div>
@@ -265,16 +265,16 @@ export default function ProductOverview() {
                   {backlogTasks.map((t) => (
                     <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/20 border border-zinc-800/40 text-zinc-400">
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-600 text-[10px]">•••</span>
-                        <span className="text-zinc-600 font-mono text-[11px]">{t.id}</span>
+                        <span className="text-zinc-400 text-[10px]">•••</span>
+                        <span className="text-zinc-400 font-mono text-[11px]">{t.id}</span>
                         <CheckCircle2 className="w-3 h-3 text-blue-500" />
                         <span>{t.title}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="bg-zinc-900/60 border border-zinc-800/60 text-zinc-500 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          <span className="text-zinc-700">::</span> {t.tag}
+                        <span className="bg-zinc-900/60 border border-zinc-800/60 text-zinc-400 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                          <span className="text-zinc-400">::</span> {t.tag}
                         </span>
-                        <span className="text-zinc-600 text-[11px]">{t.date}</span>
+                        <span className="text-zinc-400 text-[11px]">{t.date}</span>
                         <User className="w-3 h-3 text-zinc-700" />
                       </div>
                     </div>
@@ -285,7 +285,7 @@ export default function ProductOverview() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-blue-400 font-semibold text-[11px]">
                     <span className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3 h-3 text-blue-500" /> Done <span className="text-zinc-500">2</span>
+                      <CheckCircle2 className="w-3 h-3 text-blue-500" /> Done <span className="text-zinc-400">2</span>
                     </span>
                     <Plus className="w-3.5 h-3.5 text-zinc-600 hover:text-white cursor-pointer" />
                   </div>
@@ -293,16 +293,16 @@ export default function ProductOverview() {
                   {doneTasks.map((t) => (
                     <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60 opacity-80">
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-600 text-[10px]">•••</span>
-                        <span className="text-zinc-600 font-mono text-[11px]">{t.id}</span>
+                        <span className="text-zinc-400 text-[10px]">•••</span>
+                        <span className="text-zinc-400 font-mono text-[11px]">{t.id}</span>
                         <CheckCircle2 className="w-3 h-3 text-blue-500" />
                         <span className="text-zinc-400">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="bg-zinc-900/80 border border-zinc-800 text-zinc-500 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          <span className="text-zinc-700">::</span> {t.tag}
+                        <span className="bg-zinc-900/80 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                          <span className="text-zinc-400">::</span> {t.tag}
                         </span>
-                        <span className="text-zinc-600 text-[11px]">{t.date}</span>
+                        <span className="text-zinc-400 text-[11px]">{t.date}</span>
                         <User className="w-3 h-3 text-zinc-700" />
                       </div>
                     </div>
@@ -311,25 +311,25 @@ export default function ProductOverview() {
 
                 {/* Group 5: Canceled (Faded out at bottom) */}
                 <div className="space-y-2 opacity-50">
-                  <div className="flex items-center justify-between text-zinc-600 font-semibold text-[11px]">
+                  <div className="flex items-center justify-between text-zinc-400 font-semibold text-[11px]">
                     <span className="flex items-center gap-2">
-                      <XCircle className="w-3 h-3 text-zinc-600" /> Canceled <span className="text-zinc-600">2</span>
+                      <XCircle className="w-3 h-3 text-zinc-600" /> Canceled <span className="text-zinc-400">2</span>
                     </span>
                   </div>
 
                   {canceledTasks.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/10 border border-zinc-800/30 text-zinc-600">
+                    <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/10 border border-zinc-800/30 text-zinc-400">
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-700 text-[10px]">•••</span>
-                        <span className="text-zinc-700 font-mono text-[11px]">{t.id}</span>
+                        <span className="text-zinc-400 text-[10px]">•••</span>
+                        <span className="text-zinc-400 font-mono text-[11px]">{t.id}</span>
                         <XCircle className="w-3 h-3 text-zinc-600" />
                         <span className="line-through">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="bg-zinc-950 border border-zinc-900 text-zinc-600 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          <span className="text-zinc-800">::</span> {t.tag}
+                        <span className="bg-zinc-950 border border-zinc-900 text-zinc-400 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                          <span className="text-zinc-400">::</span> {t.tag}
                         </span>
-                        <span className="text-zinc-700 text-[11px]">{t.date}</span>
+                        <span className="text-zinc-400 text-[11px]">{t.date}</span>
                         <User className="w-3 h-3 text-zinc-800" />
                       </div>
                     </div>

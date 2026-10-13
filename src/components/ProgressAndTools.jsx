@@ -176,10 +176,10 @@ export default function ProgressAndTools() {
                     <div className="w-6 h-6 rounded-full bg-amber-500 border border-black text-[9px] font-bold text-black flex items-center justify-center">
                       J
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-blue-500 border border-black text-[9px] font-bold text-white flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-blue-600 border border-black text-[9px] font-bold text-white flex items-center justify-center">
                       A
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-purple-500 border border-black text-[9px] font-bold text-white flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-purple-600 border border-black text-[9px] font-bold text-white flex items-center justify-center">
                       S
                     </div>
                   </div>
@@ -280,7 +280,7 @@ export default function ProgressAndTools() {
                       key={i}
                       className="px-3 py-1 rounded-lg bg-zinc-900 border border-white/10 text-xs font-medium text-zinc-300 flex items-center gap-1.5"
                     >
-                      <span className="text-zinc-500 text-[10px]">⚙</span>
+                      <span className="text-zinc-400 text-[10px]">⚙</span>
                       {chip}
                     </span>
                   ))}
@@ -292,7 +292,7 @@ export default function ProgressAndTools() {
                       key={i}
                       className="px-3 py-1 rounded-lg bg-zinc-900/60 border border-white/5 text-xs font-medium text-zinc-400 flex items-center gap-1.5"
                     >
-                      <span className="text-zinc-600 text-[10px]">•</span>
+                      <span className="text-zinc-400 text-[10px]">•</span>
                       {chip}
                     </span>
                   ))}

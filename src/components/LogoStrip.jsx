@@ -28,7 +28,7 @@ export default function LogoStrip() {
           {[...logos, ...logos].map((logo, idx) => (
             <div
               key={idx}
-              className={`flex items-center gap-2 text-zinc-500 hover:text-white transition-colors cursor-pointer ${logo.font}`}
+              className={`flex items-center gap-2 text-zinc-400 hover:text-white transition-colors cursor-pointer ${logo.font}`}
             >
               {logo.icon && <span className="text-zinc-400 text-xs">{logo.icon}</span>}
               <span>{logo.name}</span>

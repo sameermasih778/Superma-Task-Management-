@@ -113,7 +113,14 @@ export default function FAQSection() {
                     <span className="text-base sm:text-lg font-semibold text-white tracking-tight">
                       {item.q}
                     </span>
-                    <button className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0">
+                    <button
+                      className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0"
+                      // Icon-only control: without this a screen reader
+                      // announces an anonymous "button" and the plus/minus
+                      // glyph carries no meaning.
+                      aria-label={isOpen ? 'Hide the answer' : 'Show the answer'}
+                      aria-expanded={isOpen}
+                    >
                       {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </button>
                   </div>
@@ -158,7 +165,14 @@ export default function FAQSection() {
                     <span className="text-base sm:text-lg font-semibold text-white tracking-tight">
                       {item.q}
                     </span>
-                    <button className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0">
+                    <button
+                      className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors flex-shrink-0"
+                      // Icon-only control: without this a screen reader
+                      // announces an anonymous "button" and the plus/minus
+                      // glyph carries no meaning.
+                      aria-label={isOpen ? 'Hide the answer' : 'Show the answer'}
+                      aria-expanded={isOpen}
+                    >
                       {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </button>
                   </div>

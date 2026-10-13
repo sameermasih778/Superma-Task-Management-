@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# The dashboard is behind authentication and has no indexable content.
+Disallow: /dashboard
+Disallow: /login
+Disallow: /reset-password
+
+Sitemap: https://superma-task-management.vercel.app/sitemap.xml

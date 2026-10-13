@@ -86,7 +86,7 @@ export default function Hero() {
             </div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-2.5 h-2.5 rounded bg-rose-500/80 inline-block" />
-              <h4 className="text-xs font-bold text-white tracking-tight">Keyboard-first design</h4>
+              <p className="text-xs font-bold text-white tracking-tight">Keyboard-first design</p>
             </div>
             <p className="text-[11px] text-zinc-400 leading-snug">Shortcuts for everything - no mouse required</p>
           </motion.div>
@@ -102,7 +102,7 @@ export default function Hero() {
           >
             <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/[0.06]">
               <span className="text-[11px] font-semibold text-zinc-400 tracking-wider">Activity</span>
-              <div className="flex items-center gap-1 text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300">
+              <div className="flex items-center gap-1 text-[10px] text-zinc-400 cursor-pointer hover:text-zinc-300">
                 <span>Unsubscribe</span>
                 <User className="w-3 h-3" />
               </div>
@@ -111,11 +111,11 @@ export default function Hero() {
             <div className="space-y-2 text-[11px]">
               <div className="flex items-start gap-2 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 mt-1.5 flex-shrink-0" />
-                <p><span className="text-zinc-200 font-medium">mode</span> created the issue <span className="text-zinc-500">• 8 days ago</span></p>
+                <p><span className="text-zinc-200 font-medium">mode</span> created the issue <span className="text-zinc-400">• 8 days ago</span></p>
               </div>
               <div className="flex items-start gap-2 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                <p><span className="text-zinc-200 font-medium">mode</span> changed status from <span className="text-zinc-400">Todo</span> to <span className="text-emerald-400 font-medium">In progress</span> <span className="text-zinc-500">• 7 days ago</span></p>
+                <p><span className="text-zinc-200 font-medium">mode</span> changed status from <span className="text-zinc-400">Todo</span> to <span className="text-emerald-400 font-medium">In progress</span> <span className="text-zinc-400">• 7 days ago</span></p>
               </div>
               <div className="flex items-start gap-2 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
@@ -127,16 +127,16 @@ export default function Hero() {
               </div>
               <div className="flex items-start gap-2 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 mt-1.5 flex-shrink-0" />
-                <p><span className="text-zinc-200 font-medium">mode</span> updated the description of the issue <span className="text-zinc-500">• 6 days ago</span></p>
+                <p><span className="text-zinc-200 font-medium">mode</span> updated the description of the issue <span className="text-zinc-400">• 6 days ago</span></p>
               </div>
               <div className="flex items-start gap-2 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
-                <p><span className="text-zinc-200 font-medium">mode</span> added labels <span className="text-zinc-500">•</span> <span className="text-zinc-300">Improvement</span> <span className="text-zinc-500">•</span> <span className="text-zinc-300">Bug</span> <span className="text-zinc-500">•</span> <span className="text-zinc-300">Feature</span></p>
+                <p><span className="text-zinc-200 font-medium">mode</span> added labels <span className="text-zinc-400">•</span> <span className="text-zinc-300">Improvement</span> <span className="text-zinc-400">•</span> <span className="text-zinc-300">Bug</span> <span className="text-zinc-400">•</span> <span className="text-zinc-300">Feature</span></p>
               </div>
             </div>
 
             <div className="mt-3 pt-2 border-t border-white/[0.06]">
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-white/5 text-[11px] text-zinc-500">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-white/5 text-[11px] text-zinc-400">
                 <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[9px] font-bold">M</div>
                 <span>Leave a comment...</span>
               </div>
@@ -179,7 +179,7 @@ export default function Hero() {
                   </div>
                 </div>
                 <span className="text-[11px] font-semibold text-zinc-300 mt-1">Productivity</span>
-                <span className="text-[9px] text-zinc-500">From Last Month</span>
+                <span className="text-[9px] text-zinc-400">From Last Month</span>
               </div>
 
               {/* Gauge 2 */}
@@ -194,7 +194,7 @@ export default function Hero() {
                   </div>
                 </div>
                 <span className="text-[11px] font-semibold text-zinc-300 mt-1">Productivity</span>
-                <span className="text-[9px] text-zinc-500">From Last Week</span>
+                <span className="text-[9px] text-zinc-400">From Last Week</span>
               </div>
             </div>
           </motion.div>
@@ -211,7 +211,7 @@ export default function Hero() {
             className="hidden lg:block absolute right-[4%] xl:right-[8%] 2xl:right-[12%] -top-4 w-56 bg-[#0c0d12]/90 border border-white/[0.08] hover:border-white/20 rounded-2xl p-4 shadow-2xl backdrop-blur-xl z-10 transition-colors cursor-default"
             style={{ transform: 'rotate(1deg)' }}
           >
-            <div className="text-[10px] text-zinc-500 font-medium mb-2">Your Teams</div>
+            <div className="text-[10px] text-zinc-400 font-medium mb-2">Your Teams</div>
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.06] mb-2.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-white">
                 <span className="w-2.5 h-2.5 rounded-full bg-teal-400" />
@@ -250,9 +250,9 @@ export default function Hero() {
               <Zap className="w-5 h-5 fill-white text-white" />
             </div>
             <div className="text-center">
-              <h4 className="text-xs font-bold text-white mb-1 flex items-center justify-center gap-1">
-                <Zap className="w-3 h-3 text-pink-500 fill-pink-500" /> Instantly fast
-              </h4>
+              <p className="text-xs font-bold text-white mb-1 flex items-center justify-center gap-1">
+                <Zap className="w-3 h-3 text-pink-500 fill-pink-500" aria-hidden="true" /> Instantly fast
+              </p>
               <p className="text-[10px] text-zinc-400 leading-tight">
                 Designed in pursuit of high-speed performance
               </p>
@@ -281,7 +281,7 @@ export default function Hero() {
             </div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-2.5 h-2.5 rounded bg-rose-500/80 inline-block" />
-              <h4 className="text-xs font-bold text-white tracking-tight">Keyboard-first design</h4>
+              <p className="text-xs font-bold text-white tracking-tight">Keyboard-first design</p>
             </div>
             <p className="text-[11px] text-zinc-400 leading-snug">Shortcuts for everything - no mouse required</p>
           </motion.div>
@@ -301,13 +301,13 @@ export default function Hero() {
                   <span className="text-xs font-bold text-white">Productivity Reports</span>
                   <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full">New</span>
                 </div>
-                <p className="text-[9px] text-zinc-500 mt-0.5">Lorem ipsum dolor sit amet, consectetur</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Lorem ipsum dolor sit amet, consectetur</p>
               </div>
             </div>
 
             <div className="flex gap-2 items-stretch mt-3">
               {/* Y Axis */}
-              <div className="flex flex-col justify-between text-[8px] text-zinc-600 font-mono py-1 pr-1">
+              <div className="flex flex-col justify-between text-[8px] text-zinc-400 font-mono py-1 pr-1">
                 <span>100%</span>
                 <span>80%</span>
                 <span>60%</span>
@@ -354,7 +354,7 @@ export default function Hero() {
             </div>
 
             {/* X Axis */}
-            <div className="flex justify-between pl-6 text-[8px] text-zinc-500 mt-1.5 font-mono uppercase">
+            <div className="flex justify-between pl-6 text-[8px] text-zinc-400 mt-1.5 font-mono uppercase">
               <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
             </div>
           </motion.div>
