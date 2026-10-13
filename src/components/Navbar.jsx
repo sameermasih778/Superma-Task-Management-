@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
+import RollText from './RollText';
 
 export default function Navbar() {
   const location = useLocation();
@@ -60,7 +61,7 @@ export default function Navbar() {
                   key={item.name}
                   to={item.href}
                   onClick={() => setActiveTab(item.name)}
-                  className={`relative px-5 lg:px-6 py-2.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
+                  className={`group relative px-5 lg:px-6 py-1.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -71,14 +72,14 @@ export default function Navbar() {
                       transition={{ type: 'spring', duration: 0.5 }}
                     />
                   )}
-                  <span className="relative z-10">{item.name}</span>
+                  <span className="relative z-10"><RollText>{item.name}</RollText></span>
                 </Link>
               ) : (
                 <a
                   key={item.name}
                   href={item.href}
                   onClick={() => setActiveTab(item.name)}
-                  className={`relative px-5 lg:px-6 py-2.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
+                  className={`group relative px-5 lg:px-6 py-1.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     activeTab === item.name ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -89,7 +90,7 @@ export default function Navbar() {
                       transition={{ type: 'spring', duration: 0.5 }}
                     />
                   )}
-                  <span className="relative z-10">{item.name}</span>
+                  <span className="relative z-10"><RollText>{item.name}</RollText></span>
                 </a>
               );
             })}
@@ -102,9 +103,9 @@ export default function Navbar() {
                 {/* Secondary action - shown only outside the app itself */}
                 {!isDashboardRoute && (
                   <Link to="/dashboard" className="hidden md:block">
-                    <button className="flex items-center justify-center gap-2 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap shadow-sm">
+                    <button className="group flex items-center justify-center gap-2 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap shadow-sm">
                       <LayoutDashboard className="w-4 h-4 text-indigo-400" />
-                      <span>Dashboard</span>
+                      <RollText>Dashboard</RollText>
                     </button>
                   </Link>
                 )}
@@ -112,24 +113,24 @@ export default function Navbar() {
                 {/* Sign Out - white button with label, as before */}
                 <button
                   onClick={handleSignOut}
-                  className="hidden md:flex items-center justify-center gap-1.5 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
+                  className="group hidden md:flex items-center justify-center gap-1.5 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
+                  <RollText>Sign Out</RollText>
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="hidden md:block">
+                <Link to="/login" className="hidden md:block group">
                   {/* Identical height/padding to the white Contact us button -
                       the two CTA buttons must sit on one optical baseline. */}
-                  <button className="flex items-center justify-center h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
-                    Sign In
+                  <button className="group flex items-center justify-center h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
+                    <RollText>Sign In</RollText>
                   </button>
                 </Link>
-                <Link to="/contact" className="hidden md:block">
-                  <button className="px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap">
-                    Contact us
+                <Link to="/contact" className="hidden md:block group">
+                  <button className="group px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap">
+                    <RollText>Contact us</RollText>
                   </button>
                 </Link>
               </>
@@ -165,9 +166,9 @@ export default function Navbar() {
                       setActiveTab(item.name);
                       setMobileMenuOpen(false);
                     }}
-                    className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors flex items-center justify-between"
+                    className="group px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-all flex items-center justify-between"
                   >
-                    <span>{item.name}</span>
+                    <RollText>{item.name}</RollText>
                   </Link>
                 ))}
 
@@ -178,18 +179,18 @@ export default function Navbar() {
                         <Link
                           to="/dashboard"
                           onClick={() => setMobileMenuOpen(false)}
-                          className="flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
+                          className="group flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
                         >
                           <LayoutDashboard className="w-4 h-4 text-indigo-400" />
-                          <span>Dashboard</span>
+                          <RollText>Dashboard</RollText>
                         </Link>
                       )}
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all"
+                        className="group flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all"
                       >
                         <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
+                        <RollText>Sign Out</RollText>
                       </button>
                     </>
                   ) : (
@@ -197,16 +198,16 @@ export default function Navbar() {
                       <Link
                         to="/login"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
+                        className="group block w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
                       >
-                        Sign In
+                        <RollText>Sign In</RollText>
                       </Link>
                       <Link
                         to="/contact"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all active:scale-95"
+                        className="group block w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all active:scale-95"
                       >
-                        Contact us
+                        <RollText>Contact us</RollText>
                       </Link>
                     </>
                   )}

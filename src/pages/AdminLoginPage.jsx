@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 relative overflow-hidden pt-28 pb-16 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-black text-white flex relative overflow-hidden px-4 sm:px-6 pt-28 sm:pt-32 pb-16 selection:bg-indigo-500 selection:text-white">
       
       {/* Animated Glowing Cyber Background Blobs */}
       <motion.div
@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
         initial={{ opacity: 0, y: 35, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md bg-zinc-950/90 border border-indigo-500/25 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_60px_rgba(99,102,241,0.15)] overflow-hidden group"
+        className="m-auto w-full max-w-md bg-zinc-950/90 border border-indigo-500/25 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_60px_rgba(99,102,241,0.15)] overflow-hidden group"
       >
         {/* Top Glowing Accent Beam */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_15px_#6366f1]" />

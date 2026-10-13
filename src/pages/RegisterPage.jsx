@@ -96,7 +96,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 relative overflow-hidden pt-28 pb-16 selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-black text-white flex relative overflow-hidden px-4 sm:px-6 pt-28 sm:pt-32 pb-16 selection:bg-white selection:text-black">
       
       {/* Background Ambient Glows */}
       <motion.div
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-indigo-600/[0.1] blur-[130px] rounded-full pointer-events-none"
       />
 
-      <div className="w-full max-w-md bg-zinc-950/90 border border-white/10 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden">
+      <div className="m-auto w-full max-w-md bg-zinc-950/90 border border-white/10 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden">
         
         {/* Step Indicator Header */}
         <div className="flex items-center justify-center gap-2 mb-6">

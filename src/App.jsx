@@ -18,6 +18,7 @@ import BlogPost from './pages/BlogPost';
 import ChangelogPage from './pages/ChangelogPage';
 import WaitlistPage from './pages/WaitlistPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -99,6 +100,10 @@ function MainLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+          {/* Catch-all: any URL that matches no real page renders the 404 screen
+              (inside the normal Navbar + Footer). Also serves the footer's /404 link. */}
+          <Route path="*" element={<NotFoundPage />} />
 
           {/* Protected Dashboard Routes */}
           <Route element={<ProtectedRoute />}>

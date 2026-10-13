@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 relative overflow-hidden pt-28 pb-16 selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-black text-white flex relative overflow-hidden px-4 sm:px-6 pt-28 sm:pt-32 pb-16 selection:bg-white selection:text-black">
       
       {/* Animated Ambient Background Orbs */}
       <motion.div
@@ -76,7 +76,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md bg-zinc-950/80 border border-white/10 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden group"
+        className="m-auto w-full max-w-md bg-zinc-950/80 border border-white/10 rounded-3xl p-7 sm:p-9 backdrop-blur-2xl relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden group"
       >
         {/* Top subtle ambient border glow */}
         <div className="absolute -top-[100px] left-1/2 -translate-x-1/2 w-48 h-48 bg-white/10 blur-2xl rounded-full pointer-events-none group-hover:bg-white/20 transition-all duration-700" />

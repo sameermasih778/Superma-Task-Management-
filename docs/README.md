@@ -5,6 +5,7 @@ platform for teams.
 
 | Guide | Who it is for | What it covers |
 | --- | --- | --- |
+| **[Complete Guide](COMPLETE_GUIDE.md)** | **Everyone — start here** | One guide for all audiences: concepts, quick start, everyday work, admin duties, developer setup, troubleshooting, FAQ, glossary |
 | [User Guide](USER_GUIDE.md) | Members, viewers, anyone who logs in to do work | Signing in, projects, tasks, calendar, teams, search, everyday workflows |
 | [Admin Guide](ADMIN_GUIDE.md) | `super_admin`, `admin`, `developer` | User management, roles, passwords, broadcasts, audit trail, security duties |
 | [Developer Guide](DEVELOPER_GUIDE.md) | New engineers joining the project | Local setup, architecture, database, full API reference, deployment |
