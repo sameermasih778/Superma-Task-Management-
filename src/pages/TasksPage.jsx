@@ -419,18 +419,20 @@ export default function TasksPage() {
                         </span>
 
                         {canManage && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => handleOpenEdit(task, e)}
-                              className="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
                               title="Edit Task"
+                              aria-label={`Edit task: ${task.title}`}
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={(e) => handleDeleteTask(task.id, e)}
-                              className="p-1 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                              className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
                               title="Delete Task"
+                              aria-label={`Delete task: ${task.title}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

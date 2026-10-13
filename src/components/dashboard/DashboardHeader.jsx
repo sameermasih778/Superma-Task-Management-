@@ -61,7 +61,8 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
         <div className="flex items-center gap-3 flex-1">
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
+            className="lg:hidden w-11 h-11 shrink-0 flex items-center justify-center text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -96,7 +97,9 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
         <div className="relative">
           <button
             onClick={() => setShowBellDropdown(!showBellDropdown)}
-            className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors relative cursor-pointer"
+            aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+            aria-expanded={showBellDropdown}
+            className="w-11 h-11 flex items-center justify-center text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors relative cursor-pointer"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
