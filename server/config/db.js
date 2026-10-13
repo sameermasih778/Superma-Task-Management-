@@ -60,6 +60,15 @@ async function testConnection() {
   }
 }
 
-testConnection();
+/**
+ * Resolves once the connection check and any pending migrations have finished.
+ *
+ * The server itself does not need to wait - it can start accepting requests
+ * while the schema catches up. Tests do need to wait: querying before a
+ * migration lands would assert against the OLD schema, which is a flaky and
+ * misleading failure. Nothing here ever rejects, so awaiting it is always safe.
+ */
+const ready = testConnection();
 
 module.exports = pool;
+module.exports.ready = ready;

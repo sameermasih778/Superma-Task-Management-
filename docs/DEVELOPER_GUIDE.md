@@ -474,28 +474,64 @@ the server console.
 
 ---
 
-## 11. Testing status
+## 11. Automated tests
 
-**There is currently no automated test suite in this repository.** Everything
-described here as "verified" was verified with throwaway scripts that were run
-and deleted.
+The backend runs a Jest + Supertest suite from the `server/` directory:
 
-This is the highest-value gap in the project. The areas that need tests first,
-in priority order:
+```bash
+cd server
+npm test          # run everything
+npm run test:watch
+```
 
-1. **Authorisation** — that members cannot reach admin routes, and cannot manage
-   teams they do not own. This is where a real breach would come from.
-2. **Auth** — password hashing and the 8–72 byte rule, OTP expiry, rate limiter
-   behaviour, Google credential verification for both credential types.
-3. **Google sign-in guarantees** — that a new signup is always `member`, that an
-   existing role is preserved, and that unverified emails are refused.
-4. **Marketing endpoints** — waitlist position correctness, including the
-   duplicate-email case.
+74 tests across 5 files, taking roughly a minute against the hosted database.
 
-Note that the backend has no test runner configured at all, so this also means
-choosing one and wiring it into `npm test`.
+### 11.1 The safety rules
 
-### 11.1 Known authorisation gaps — both fixed
+The suite never touches production, and it refuses to start if it cannot
+guarantee that. `tests/testEnv.js` is loaded before any application module, and
+it fails the run rather than degrading:
+
+| Guard | Why |
+| --- | --- |
+| `DB_NAME` is forced to `suprema_test` | The pool is built from env at require time, so the override has to land first. |
+| `.env` is read back and compared | If someone names their real database `suprema_test`, test and production would be the same database. |
+| SMTP credentials are forced empty | Otherwise tests would send genuine reset emails to genuine people. |
+
+`tests/globalSetup.js` drops and recreates `suprema_test` before every run, loads
+`schema.sql`, applies the migrations, and seeds five users covering every role
+under test plus a workspace, project, task and attachment. The `DROP` targets the
+literal string `suprema_test` and nothing else - it never reads a database name
+from the environment.
+
+SMTP is blanked rather than deleted on purpose. `dotenv` repopulates any key that
+is absent from `process.env`, so deleting `SMTP_USER` would put the real
+credentials straight back the moment `config/db.js` loaded.
+
+Rate limiters are disabled under `NODE_ENV=test`. A suite that fires hundreds of
+requests from one address is exactly what they exist to reject, and a throttled
+test fails depending on which file ran first.
+
+### 11.2 What is covered
+
+| File | Covers |
+| --- | --- |
+| `smoke.test.js` | The harness itself - correct database, no SMTP, schema present, fixtures intact. If this fails nothing else should be trusted. |
+| `password-reset.test.js` | No user enumeration, tokens stored as SHA-256, single use, 30-minute expiry, and the old password failing afterwards. |
+| `authorization.test.js` | The audit feed being staff-only, and attachment deletion restricted to uploader / workspace owner / workspace admin / staff. |
+| `changelog.test.js` | CRUD validation, duplicate tags, one-bullet-per-line conversion, and newest-first ordering on the public endpoint. |
+| `leads.test.js` | Contact and waitlist capture, queue positions, duplicate signups, status changes, and CSV quoting. |
+
+**Still untested**, in the order worth doing next:
+
+1. **Google sign-in guarantees** - that a new signup is always `member`, that an
+   existing role is preserved, and that unverified emails are refused. This needs
+   a fake token signer, which is real work rather than a quick addition.
+2. **OTP signup** - issuance, expiry and the single-use claim.
+3. **Workspace and team authorization** - member-managed teams are the other
+   place a real breach would come from.
+
+### 11.3 Known authorisation gaps — both fixed
 
 Two gaps were found while documenting the API, and both were closed in the same
 day. They are recorded here rather than quietly deleted, because "we found a

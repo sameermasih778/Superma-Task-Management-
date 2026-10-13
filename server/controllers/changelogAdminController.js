@@ -98,7 +98,14 @@ const validate = (body) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(releaseDate)) {
     return 'The release date must be in YYYY-MM-DD format.';
   }
-  if (new Date(releaseDate).toString() === 'Invalid Date') {
+  // Node does NOT reject an impossible date - it silently rolls it forward:
+  // new Date('2030-02-31') is 3 March, not "Invalid Date". So asking whether
+  // the value is invalid cannot catch February 31st, which would then reach a
+  // DATE column and coerce or fail there instead. Parse as UTC and compare the
+  // round-tripped date back against the input; the overflow shows up as a
+  // mismatch. UTC also keeps the result independent of the server's timezone.
+  const parsed = new Date(`${releaseDate}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== releaseDate) {
     return 'That release date is not a real date.';
   }
 

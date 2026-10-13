@@ -1,5 +1,14 @@
 const rateLimit = require('express-rate-limit');
 
+/**
+ * Tests fire hundreds of requests from one IP in a few seconds, which is
+ * exactly what these limiters exist to reject. Under NODE_ENV=test they are all
+ * disabled: a throttled test would fail randomly depending on which suite ran
+ * first, and it would be asserting express-rate-limit's behaviour rather than
+ * this app's. Production and development limits are untouched.
+ */
+const isTest = process.env.NODE_ENV === 'test';
+
 // Global API Rate Limiter (Bypassed for localhost / dev mode)
 const apiLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
@@ -24,6 +33,7 @@ const formLimiter = rateLimit({
   max: 5, // 5 submissions per hour
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isTest,
   message: {
     success: false,
     message: 'Submission limit reached for your IP address. Please try again in an hour.'
@@ -40,6 +50,7 @@ const leadLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isTest,
   message: {
     success: false,
     message: 'Too many signups from this network. Please try again later.'
@@ -58,7 +69,11 @@ const authRateLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // only failed attempts count
+  // Only failed attempts count, so a person logging in normally never spends
+  // budget - but 20 rejected tokens or wrong passwords still lock the door.
+  skipSuccessfulRequests: true,
+  // Tests deliberately drive rejected tokens through this endpoint.
+  skip: () => isTest,
   message: {
     success: false,
     message: 'Too many sign-in attempts. Please try again in 15 minutes.'
