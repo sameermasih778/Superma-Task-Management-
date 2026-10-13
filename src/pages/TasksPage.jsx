@@ -483,7 +483,7 @@ export default function TasksPage() {
         </div>
       ) : (
         /* ================= TABULAR LIST VIEW ================= */
-        <div className="bg-zinc-950 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-zinc-950 border border-white/10 rounded-2xl overflow-x-auto shadow-xl">
           <table className="w-full text-left text-xs text-zinc-300">
             <thead className="bg-zinc-900/80 border-b border-white/10 text-zinc-400 uppercase text-[10px] tracking-wider">
               <tr>
