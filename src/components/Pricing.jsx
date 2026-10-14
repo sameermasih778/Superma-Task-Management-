@@ -204,7 +204,7 @@ export default function Pricing() {
                         aria-checked={billedYearly}
                         // The knob is a bare div, so the button has no text of
                         // its own; this is its only accessible name.
-                        aria-label="Bill yearly"
+                        aria-label={billedYearly ? 'Bill yearly' : 'Bill monthly'}
                         className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors ${
                           billedYearly ? 'bg-zinc-700' : 'bg-zinc-900 border border-white/10'
                         }`}
@@ -215,7 +215,7 @@ export default function Pricing() {
                           }`}
                         />
                       </button>
-                      <span>Billed yearly</span>
+                      <span>{billedYearly ? 'Billed yearly' : 'Billed monthly'}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-zinc-400">{plan.subtext}</span>
