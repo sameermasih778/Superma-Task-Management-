@@ -2,7 +2,7 @@
 
 **A full-stack task & project management SaaS platform** — a React + Vite front end, a Node.js/Express REST API, and a MySQL database, deployed to the cloud.
 
-Built as **KhawajaLabs Project **.
+Built as " KhawajaLabs Project ".
 
 <p>
   <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
@@ -69,8 +69,7 @@ Detailed guides live in [`docs/`](docs/README.md):
 | Guide | For |
 | --- | --- |
 | [User Guide](docs/USER_GUIDE.md) | Members and viewers — signing in, projects, tasks, calendar, analytics, search |
-| [Admin Guide](docs/ADMIN_GUIDE.md) | Staff — user management, roles, passwords, broadcasts, security duties |
-| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Engineers — setup, architecture, full API reference, deployment |
+
 
 ## Table of Contents
 
