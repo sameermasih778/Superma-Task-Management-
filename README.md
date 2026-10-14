@@ -71,9 +71,6 @@ Detailed guides live in [`docs/`](docs/README.md):
 | [User Guide](docs/USER_GUIDE.md) | Members and viewers — signing in, projects, tasks, calendar, analytics, search |
 | [Admin Guide](docs/ADMIN_GUIDE.md) | Staff — user management, roles, passwords, broadcasts, security duties |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Engineers — setup, architecture, full API reference, deployment |
-| [Video Script](docs/VIDEO_SCRIPT.md) | A shot-by-shot recording plan with narration and timings |
-
----
 
 ## Table of Contents
 
@@ -181,24 +178,6 @@ Suprema splits authentication deliberately:
 - **`/admin-login`** (alias `/staff-portal`) — internal staff portal. Admins, developers, and super admins sign in here. The public navbar is **not** rendered on dashboard pages for these accounts, giving a dedicated staff dashboard.
 
 Logging out returns you to whichever portal matches your account.
-
----
-
-## Default Credentials
-
-`npm run db:init` seeds demo accounts for local development. **Every seeded account uses the same password: `Password123!`**
-
-| Role | Email | Sign-in portal |
-| --- | --- | --- |
-| `super_admin` | admin@suprema.io | `/admin-login` |
-| `admin` | sarah@suprema.io | `/admin-login` |
-| `developer` | developer@suprema.io | `/admin-login` |
-| `member` | alex@suprema.io | `/login` |
-| `viewer` | client@suprema.io | `/login` |
-
-> These are demo accounts for a fresh local database only. Change the password (or delete them) before exposing an instance to the public internet.
-
----
 
 ## Available Scripts
 
@@ -490,76 +469,8 @@ npm run db:migrate
 
 Migrations must stay **idempotent** (safe on every boot) and **non-destructive** (never drop or rewrite valid data).
 
----
 
-## Environment Variables
 
-### `server/.env`
-
-```env
-PORT=5000
-NODE_ENV=development
-CLIENT_ORIGIN=http://localhost:5173
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=suprema_db
-# true for hosted MySQL providers (Aiven, Railway, ...) - they require TLS
-DB_SSL=false
-# connections per server process - lower it for hosted free tiers
-DB_CONNECTION_LIMIT=10
-# pin every new connection to this sql_mode (unset = server default). Needed
-# on hosted MySQL, which defaults to strict modes this app never ran against:
-# DB_SQL_MODE=IGNORE_SPACE,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION
-
-# REQUIRED in production (Vercel): cloud storage for avatars + attachments.
-# Unset = local dev, files go to server/uploads/.
-CLOUDINARY_URL=
-
-JWT_SECRET=
-JWT_EXPIRES_IN=7d
-
-# Google sign-in - the WEB OAuth client ID from Google Cloud Console.
-# Must match GOOGLE_CLIENT_ID on the server; leave empty to hide the button.
-GOOGLE_CLIENT_ID=
-
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
-# Optional - enables real OTP emails. Without these, the OTP is
-# printed to the server console instead.
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=
-SMTP_PASS=
-# How long a request waits for SMTP before continuing in the background.
-# The pooled transport (server/config/mailer.js) pays Gmail's TLS handshake
-# once per process instead of on every email: measured 15.4s for the first
-# send, then ~2s once the connection is reused. Lower this for faster
-# responses; the email still goes out in the background.
-SMTP_WAIT_MS=5000
-```
-
-### `.env` (client)
-
-```env
-VITE_API_URL=http://localhost:5000/api/v1
-
-# Google sign-in. Must be the SAME client ID as GOOGLE_CLIENT_ID on the server.
-# Leave empty and the button is hidden rather than left on a page that cannot work.
-VITE_GOOGLE_CLIENT_ID=
-```
-
-> **Vite reads env vars at BUILD time.** After changing any `VITE_*` value you must
-> rebuild and redeploy the frontend - editing it in the Vercel dashboard without a
-> rebuild changes nothing.
-
-> **`JWT_SECRET` has a hardcoded fallback** (`suprema_jwt_super_secret_key_2026_dev_mode`) in the source so local dev works out of the box. This must be set to a real value in any deployed environment, or tokens can be forged.
-
----
 
 ## Deploying to Vercel
 
