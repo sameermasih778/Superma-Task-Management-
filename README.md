@@ -2,7 +2,7 @@
 
 **A full-stack task & project management SaaS platform** — a React + Vite front end, a Node.js/Express REST API, and a MySQL database, deployed to the cloud.
 
-Built as **KhawajaLabs Project 2**.
+Built as **KhawajaLabs Project **.
 
 <p>
   <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
@@ -391,16 +391,6 @@ All routes require `Authorization: Bearer <token>` except registration, login, a
 | `PATCH` | `/notifications/read-all` | — |
 | `GET` | `/activity` | `workspace_id` |
 
-### Admin
-
-| Method | Endpoint | Min. role |
-| --- | --- | --- |
-| `GET` | `/admin/users` | admin |
-| `PATCH` | `/admin/users/:id/role` | admin |
-| `PATCH` | `/admin/users/:id/status` | admin |
-| `PATCH` | `/admin/users/:id/reset-password` | admin |
-| `DELETE` | `/admin/users/:id` | **super_admin** |
-| `POST` | `/admin/notifications/broadcast` | admin |
 
 #### Sending notifications
 
