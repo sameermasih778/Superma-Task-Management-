@@ -1,6 +1,59 @@
 # Suprema
 
-A task and project management SaaS platform — built as **KhawajaLabs Project 2**.
+**A full-stack task & project management SaaS platform** — a React + Vite front end, a Node.js/Express REST API, and a MySQL database, deployed to the cloud.
+
+Built as **KhawajaLabs Project 2**.
+
+<p>
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
+  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" />
+  <img alt="Node.js + Express" src="https://img.shields.io/badge/Node.js-Express-339933?logo=nodedotjs&logoColor=white" />
+  <img alt="MySQL 8" src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white" />
+  <img alt="TailwindCSS 3" src="https://img.shields.io/badge/TailwindCSS-3-06B6D4?logo=tailwindcss&logoColor=white" />
+  <img alt="Deployed on Vercel" src="https://img.shields.io/badge/Deployed%20on-Vercel-000000?logo=vercel&logoColor=white" />
+</p>
+
+**🔗 Live demo:** <https://superma-task-management.vercel.app> · **API health:** <https://superma-task-management-37zl.vercel.app/api/v1/health>
+
+---
+
+## Screenshots
+
+### Marketing site
+
+<p>
+  <img src="docs/images/home-01-hero.png" width="49%" alt="Suprema landing page — hero" />
+  <img src="docs/images/home-05-pricing.png" width="49%" alt="Pricing plans" />
+</p>
+
+### Inside the app
+
+<p>
+  <img src="docs/images/dash-01-dashboard-top.png" width="100%" alt="Member dashboard — a personalized overview" />
+</p>
+
+<p>
+  <img src="docs/images/dash-02-projects.png" width="49%" alt="Projects with live progress" />
+  <img src="docs/images/dash-03-tasks.png" width="49%" alt="Kanban task board" />
+</p>
+
+<p>
+  <img src="docs/images/dash-04-calendar.png" width="49%" alt="Calendar of due dates" />
+  <img src="docs/images/dash-05-analytics.png" width="49%" alt="Workspace analytics" />
+</p>
+
+<p>
+  <img src="docs/images/dash-10-search-open.png" width="49%" alt="Global search (Ctrl + K)" />
+  <img src="docs/images/login.png" width="49%" alt="Sign-in page" />
+</p>
+
+### Everywhere else
+
+<p>
+  <img src="docs/images/notfound-404.png" width="65%" alt="Custom 404 page" />
+</p>
+
+---
 
 Suprema is two things in one codebase:
 
@@ -24,18 +77,19 @@ Detailed guides live in [`docs/`](docs/README.md):
 
 ## Table of Contents
 
+- [Screenshots](#screenshots)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Default Credentials](#default-credentials)
-- [Deploying to Vercel](#deploying-to-vercel)
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
 - [Roles & Permissions](#roles--permissions)
+- [Notes & Known Behaviours](#notes--known-behaviours)
 - [API Reference](#api-reference)
 - [Database](#database)
 - [Migrations](#migrations)
 - [Environment Variables](#environment-variables)
-- [Notes & Known Behaviours](#notes--known-behaviours)
+- [Deploying to Vercel](#deploying-to-vercel)
 
 ---
 
@@ -130,6 +184,22 @@ Logging out returns you to whichever portal matches your account.
 
 ---
 
+## Default Credentials
+
+`npm run db:init` seeds demo accounts for local development. **Every seeded account uses the same password: `Password123!`**
+
+| Role | Email | Sign-in portal |
+| --- | --- | --- |
+| `super_admin` | admin@suprema.io | `/admin-login` |
+| `admin` | sarah@suprema.io | `/admin-login` |
+| `developer` | developer@suprema.io | `/admin-login` |
+| `member` | alex@suprema.io | `/login` |
+| `viewer` | client@suprema.io | `/login` |
+
+> These are demo accounts for a fresh local database only. Change the password (or delete them) before exposing an instance to the public internet.
+
+---
+
 ## Available Scripts
 
 Run from the **root** directory:
@@ -221,12 +291,6 @@ All four badges are local SVGs in `src/assets/` — there is no third-party avat
 
 The staff restriction is enforced **server-side** in `authController.js` — hiding the upload controls in the UI is only a convenience, and a direct API call would otherwise still succeed.
 
-| | |
-| --- | --- |
-| Formats | PNG, JPEG, GIF, WEBP |
-| Max size | 2MB |
-| Endpoints | `POST /auth/avatar` (multipart, field `avatar`), `DELETE /auth/avatar` |
-
 Validation happens in three layers, because the first two are attacker-controlled:
 
 1. declared MIME type — client supplied, trivially forged
@@ -234,6 +298,21 @@ Validation happens in three layers, because the first two are attacker-controlle
 3. **magic bytes** — the real leading bytes of the file on disk are compared against the signature for the claimed format, which is what catches an HTML or SVG payload renamed to `.png`
 
 Files are ignored by git. Note that local-disk storage will not survive an ephemeral host such as Vercel — use object storage (S3/Cloudinary) for a real deployment.
+
+### Guards
+
+Several rules are enforced server-side, so they hold even if someone bypasses the UI:
+
+- you cannot change your **own** role, status, or delete your own account
+- only a **super_admin** may grant the `super_admin` role
+- only a **super_admin** may suspend another super admin
+- a suspended account is **blocked at login** with a 403
+
+The client also has a route guard, but it is a UX convenience only — the API is the real boundary.
+
+---
+
+## Notes & Known Behaviours
 
 ### Toasts
 
@@ -270,17 +349,6 @@ The header's **New Task** button works from every dashboard page, not just the T
 - Opened from the **header** → no project in context, so the modal shows a **Project** selector.
 - Opened from a **task row** → the project is pre-selected and the selector is hidden.
 - **Edit** opens the same modal pre-filled, driven by `editingTask` state lifted into `DashboardLayout` and shared through outlet context.
-
-### Guards
-
-Several rules are enforced server-side, so they hold even if someone bypasses the UI:
-
-- you cannot change your **own** role, status, or delete your own account
-- only a **super_admin** may grant the `super_admin` role
-- only a **super_admin** may suspend another super admin
-- a suspended account is **blocked at login** with a 403
-
-The client also has a route guard, but it is a UX convenience only — the API is the real boundary.
 
 ---
 

@@ -57,7 +57,7 @@ export default function Footer() {
                   className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-zinc-400 hover:text-white transition-colors group"
                 >
                   <Mail className="w-4 h-4 text-zinc-400 group-hover:text-white" />
-                  <span>hello@suprema.com</span>
+                  <span>khawajaalabs@gmail.com</span>
                   <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-1 transition-all" />
                 </a>
               </div>
@@ -108,7 +108,7 @@ export default function Footer() {
               </h3>
               <div className="flex items-center gap-2.5">
                 <a
-                  href="https://linkedin.com"
+                  href="https://www.linkedin.com/company/khawajalabs"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white text-xs font-bold hover:bg-white hover:text-black transition-all shadow-md"
