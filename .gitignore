@@ -30,6 +30,12 @@ server/uploads/**
 *.sln
 *.sw?
 FullStack_SRS_Suprema.docx
+docs/screenshots
+superma_complete_guide.docx
+suprema_QA_Test_Report_Day14.docx
+suprema_user_guide.docx
+Suprema_smoke_test_report_day15.docx
+Smoke_test_Day15.md
 # Environment Variables
 .env
 .env.*

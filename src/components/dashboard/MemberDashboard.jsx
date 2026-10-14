@@ -5,8 +5,7 @@ import {
   FolderKanban,
   AlarmClock,
   CheckCircle2,
-  LayoutDashboard,
-  Activity as ActivityIcon
+  LayoutDashboard
 } from 'lucide-react';
 import {
   DashboardShell,
@@ -17,7 +16,6 @@ import {
   ProgressBar,
   PriorityPill,
   StatusPill,
-  ActivityFeed,
   EmptyState,
   LoadingBlock
 } from './DashboardShell';
@@ -33,7 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function MemberDashboard() {
   const { user } = useAuth();
   const {
-    workspaceName, tasks, loading, error, overdue, completionRate, activeProjects, activities
+    workspaceName, tasks, loading, error, overdue, completionRate, activeProjects
   } = useDashboardData();
 
   const firstName = user?.name?.split(' ')[0] || 'there';
@@ -227,20 +225,15 @@ export default function MemberDashboard() {
         </div>
 
         <div className="space-y-6">
-          <SectionCard
-            title="Recent team activity"
-            icon={<ActivityIcon className="h-4 w-4" />}
-            action={<SectionLink to="/dashboard/activity" label="View all" />}
-          >
-            <ActivityFeed activities={activities} limit={8} emptyHint="Nothing has happened yet." />
-          </SectionCard>
-
+          {/* No activity widget here: the feed is a staff-only audit trail
+              (the API returns 403 for members), so a member dashboard must not
+              advertise something they cannot open. */}
           <SectionCard title="Quick links" icon={<LayoutDashboard className="h-4 w-4" />}>
             <div className="space-y-2">
               {[
                 { to: '/dashboard/tasks', label: 'Tasks board', hint: 'Kanban view of all work' },
                 { to: '/dashboard/teams', label: 'Teams', hint: 'See who you work with' },
-                { to: '/dashboard/activity', label: 'Activity feed', hint: 'Full workspace history' }
+                { to: '/dashboard/calendar', label: 'Calendar', hint: 'Your upcoming deadlines' }
               ].map((l) => (
                 <Link
                   key={l.to}

@@ -19,7 +19,9 @@ const authenticateToken = (req, res, next) => {
   jwt.verify(token, process.env.JWT_SECRET || 'suprema_jwt_super_secret_key_2026_dev_mode', (err, user) => {
     if (err) {
       const isExpired = err.name === 'TokenExpiredError';
-      return res.status(403).json({
+      // 401, not 403: the caller failed to authenticate. 403 is reserved for
+      // an authenticated caller lacking the required role (see authorizeRoles).
+      return res.status(401).json({
         success: false,
         message: isExpired ? 'Authentication Token Expired' : 'Invalid or Tampered Authentication Token',
         error: err.message

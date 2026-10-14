@@ -51,7 +51,9 @@ describe('GET /activity - the audit trail is staff only', () => {
       .get('/api/v1/activity')
       .query({ workspace_id: F.workspaceId })
       .set('Authorization', 'Bearer not.a.real.token');
-    expect(res.status).toBe(403);
+    // 401: the token itself is invalid, so the caller is unauthenticated.
+    // (403 is reserved for an authenticated caller missing a required role.)
+    expect(res.status).toBe(401);
   });
 
   test('passes the role gate for every staff role', async () => {

@@ -56,7 +56,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { label: 'Calendar', path: '/dashboard/calendar', icon: Calendar },
     { label: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
     { label: 'Teams', path: '/dashboard/teams', icon: Users },
-    { label: 'Activity Feed', path: '/dashboard/activity', icon: Activity },
+    // The activity feed is a staff-only audit trail (the API rejects members
+    // with a 403), so members are not offered a link that cannot load.
+    ...(isStaffOrAdmin ? [{ label: 'Activity Feed', path: '/dashboard/activity', icon: Activity }] : []),
     // Staff use a fixed role emblem and have no picture to change, so the
     // Profile page is only offered to member / viewer accounts.
     ...(!isStaffOrAdmin ? [{ label: 'My Profile', path: '/dashboard/profile', icon: Settings }] : []),

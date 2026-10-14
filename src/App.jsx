@@ -124,8 +124,11 @@ function MainLayout() {
                 <Route path="changelog-admin" element={<AdminChangelogPage />} />
                 <Route path="blog-admin" element={<AdminBlogPage />} />
                 <Route path="platform-overview" element={<AdminOverviewPage />} />
+                {/* Activity feed is a staff-only audit trail; the API enforces
+                    this, so the route guard gives members a clear message
+                    instead of an empty shell that logs a 403. */}
+                <Route path="activity" element={<ActivityPage />} />
               </Route>
-              <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>
         </Routes>

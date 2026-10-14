@@ -197,7 +197,9 @@ describe('credentials never leave the server', () => {
       .get('/api/v1/admin/leads/contact')
       .set('Authorization', `Bearer ${forged}`);
 
-    expect(res.status).toBe(403);
+    // Invalid signature => unauthenticated (401), not "authenticated but
+    // forbidden" (403).
+    expect(res.status).toBe(401);
   });
 
   test('a token signed for another role is honoured only as itself', async () => {

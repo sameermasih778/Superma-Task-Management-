@@ -14,7 +14,8 @@ import { useAuth } from '../context/AuthContext';
  * each re-implement the same reductions.
  */
 export default function useDashboardData() {
-  const { activeWorkspace } = useAuth();
+  const { activeWorkspace, user } = useAuth();
+  const isStaff = ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -39,25 +40,48 @@ export default function useDashboardData() {
     try {
       const ws = activeWorkspace.id;
 
-      // Parallelise - these are independent reads.
-      const [projRes, taskRes, teamRes, actRes] = await Promise.all([
+      // Parallelise the workspace reads, but settle them individually: one
+      // denied or failing endpoint must never blank the whole dashboard.
+      // (A member used to hit the staff-only /activity endpoint, and its 403
+      // rejected the entire Promise.all - wiping projects, tasks and teams too.)
+      const [projRes, taskRes, teamRes] = await Promise.allSettled([
         api.get(`/projects?workspace_id=${ws}`),
         api.get(`/tasks?workspace_id=${ws}`),
-        api.get(`/teams?workspace_id=${ws}`),
-        api.get(`/activity?workspace_id=${ws}`)
+        api.get(`/teams?workspace_id=${ws}`)
       ]);
 
-      setProjects(projRes.projects || []);
-      setTasks(taskRes.tasks || []);
-      setTeams(teamRes.teams || []);
-      setActivities(actRes.activities || []);
+      if (projRes.status === 'fulfilled') setProjects(projRes.value.projects || []);
+      if (taskRes.status === 'fulfilled') setTasks(taskRes.value.tasks || []);
+      if (teamRes.status === 'fulfilled') setTeams(teamRes.value.teams || []);
+
+      // Only surface an error banner when every core read failed (e.g. the
+      // token expired or the API is down) - a single denied endpoint should
+      // degrade quietly instead of replacing the page with an error.
+      const failed = [projRes, taskRes, teamRes].filter((r) => r.status === 'rejected');
+      if (failed.length === 3) {
+        setError(failed[0].reason?.message || 'Failed to load workspace data');
+      }
+
+      // The activity feed is a staff-only audit trail (the API rejects members
+      // with 403), so members must not request it at all.
+      if (isStaff) {
+        try {
+          const actRes = await api.get(`/activity?workspace_id=${ws}`);
+          setActivities(actRes.activities || []);
+        } catch {
+          setActivities([]);
+        }
+      } else {
+        setActivities([]);
+      }
+
       setFetchedAt(Date.now());
     } catch (err) {
       setError(err.message || 'Failed to load workspace data');
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspace?.id]);
+  }, [activeWorkspace?.id, isStaff]);
 
   useEffect(() => {
     fetchData();
