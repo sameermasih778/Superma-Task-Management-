@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Search, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
 import { blogPosts, authors } from '../data/blogData';
 import api from '../utils/api';
+import { withLineBreaks } from '../utils/text';
 import logoImg from '../assets/small logo.svg';
 import smallLogo from '../assets/small logo.svg';
 import FreeTrialSection from '../components/FreeTrialSection';
@@ -242,7 +243,7 @@ export default function BlogPage() {
 
                     {/* Banner Title */}
                     <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line px-2">
-                      {blog.bannerTitle}
+                      {withLineBreaks(blog.bannerTitle)}
                     </h3>
                   </div>
 
@@ -377,7 +378,7 @@ export default function BlogPage() {
 
                     {/* Banner Title */}
                     <h3 className="text-base sm:text-lg md:text-xl font-extrabold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line px-2">
-                      {blog.bannerTitle}
+                      {withLineBreaks(blog.bannerTitle)}
                     </h3>
                   </div>
 

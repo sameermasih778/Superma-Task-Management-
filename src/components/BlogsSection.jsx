@@ -5,6 +5,7 @@ import { BookOpen, ChevronRight, ArrowRight } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { blogPosts } from '../data/blogData';
 import api from '../utils/api';
+import { withLineBreaks } from '../utils/text';
 
 export default function BlogsSection() {
   const [posts, setPosts] = useState(blogPosts);
@@ -92,7 +93,7 @@ export default function BlogsSection() {
 
                   {/* Overlay Banner Title */}
                   <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line">
-                    {blog.bannerTitle || blog.banner_title || blog.title}
+                    {withLineBreaks(blog.bannerTitle || blog.banner_title || blog.title)}
                   </h3>
                 </div>
 

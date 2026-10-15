@@ -4,6 +4,7 @@ import {
   CheckCircle2, RefreshCw, X, Search
 } from 'lucide-react';
 import api from '../utils/api';
+import { withLineBreaks } from '../utils/text';
 import { useToast } from '../components/toast/ToastContext';
 
 /**
@@ -126,7 +127,7 @@ export default function AdminChangelogPage() {
       subItemTitle: entry.sub_item_title || '',
       subItemDescription: entry.sub_item_description || '',
       tag: entry.tag || '',
-      bannerTitle: entry.banner_title || '',
+      bannerTitle: withLineBreaks(entry.banner_title) || '',
       bullets: toFormBullets(entry.bullets),
       note: entry.note || ''
     });
@@ -365,10 +366,11 @@ export default function AdminChangelogPage() {
             />
           </Field>
 
-          <Field label="Banner title (optional)">
-            <input
+          <Field label="Banner title (optional)" hint="Large text on the public card. Press Enter to choose where the line breaks.">
+            <textarea
               value={form.bannerTitle}
               onChange={(e) => setForm({ ...form, bannerTitle: e.target.value })}
+              rows={2}
               className={inputClass}
             />
           </Field>

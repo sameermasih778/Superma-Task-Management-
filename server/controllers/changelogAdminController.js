@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { withLineBreaks } = require('../utils/text');
 
 /**
  * Changelog manager — staff CRUD over the table the public changelog reads.
@@ -28,6 +29,19 @@ const parseJsonArray = (value) => {
     return [];
   }
 };
+
+/**
+ * Heading fields only. Single-line admin inputs cannot hold a real newline, so
+ * an editor describes the break with the two characters `\` and `n` (most
+ * visibly in the banner title, which the public page renders with
+ * `whitespace-pre-line`). Store a real newline instead, so the line breaks.
+ *
+ * Deliberately NOT applied to the free-text columns (description, note): a
+ * genuine backslash there is content, not an escape.
+ */
+const headingText = (value) => withLineBreaks(String(value).trim());
+const optionalHeadingText = (value) =>
+  (value ? withLineBreaks(String(value).trim()) || null : null);
 
 /**
  * Accept either a JSON array, an array, or one bullet per line.
@@ -159,12 +173,12 @@ const createChangelog = async (req, res, next) => {
         releaseDate,
         String(body.badge || 'New').trim() || 'New',
         String(body.badgeColor || body.badge_color || 'text-emerald-400').trim(),
-        String(body.title).trim(),
+        headingText(body.title),
         body.description ? String(body.description).trim() : null,
-        body.subItemTitle ? String(body.subItemTitle).trim() : null,
+        optionalHeadingText(body.subItemTitle),
         body.subItemDescription ? String(body.subItemDescription).trim() : null,
         body.tag ? String(body.tag).trim() : null,
-        body.bannerTitle ? String(body.bannerTitle).trim() : null,
+        optionalHeadingText(body.bannerTitle),
         normaliseBullets(body.bullets),
         body.note ? String(body.note).trim() : null
       ]
@@ -215,12 +229,12 @@ const updateChangelog = async (req, res, next) => {
         releaseDate,
         String(body.badge || 'New').trim() || 'New',
         String(body.badgeColor || body.badge_color || 'text-emerald-400').trim(),
-        String(body.title).trim(),
+        headingText(body.title),
         body.description ? String(body.description).trim() : null,
-        body.subItemTitle ? String(body.subItemTitle).trim() : null,
+        optionalHeadingText(body.subItemTitle),
         body.subItemDescription ? String(body.subItemDescription).trim() : null,
         body.tag ? String(body.tag).trim() : null,
-        body.bannerTitle ? String(body.bannerTitle).trim() : null,
+        optionalHeadingText(body.bannerTitle),
         normaliseBullets(body.bullets),
         body.note ? String(body.note).trim() : null,
         tagId

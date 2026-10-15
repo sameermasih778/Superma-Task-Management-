@@ -222,6 +222,44 @@ describe('PUT /admin/changelogs/:tagId - updating', () => {
   });
 });
 
+describe('escaped line breaks in text fields', () => {
+  test('stores a real newline when an editor types the characters backslash-n', async () => {
+    // A single-line admin input cannot hold a newline, so editors describe the
+    // break with the two characters `\` and `n`. Stored verbatim that printed
+    // "\n" on the public card - this is that regression.
+    const body = validBody({ bannerTitle: 'Task Assignment\\nFeatures' });
+    created.push(body.tagId);
+
+    await request(app).post(ADMIN).set(staffToken).send(body);
+
+    const pub = await request(app).get(PUBLIC);
+    const found = pub.body.changelogs.find((c) => c.tagId === body.tagId);
+
+    expect(found.bannerTitle).toBe('Task Assignment\nFeatures');
+    expect(found.bannerTitle).not.toContain('\\n');
+  });
+
+  test('serves rows stored before the fix without printing the escape', async () => {
+    // Reproduce a legacy row exactly: CHAR(92) is a backslash, so this stores
+    // the two characters `\` + `n` no matter how the connection escapes them.
+    const tag = `v9.9.9-${unique('legacy')}`;
+    created.push(tag);
+
+    await pool.query(
+      `INSERT INTO changelogs (tag_id, date, release_date, title, banner_title)
+       VALUES (?, 'Jan 1, 2030', '2030-01-01', 'Legacy row',
+               CONCAT('Legacy heading', CHAR(92), 'ncontinued'))`,
+      [tag]
+    );
+
+    const pub = await request(app).get(PUBLIC);
+    const found = pub.body.changelogs.find((c) => c.tagId === tag);
+
+    expect(found.bannerTitle).toBe('Legacy heading\ncontinued');
+    expect(found.bannerTitle).not.toContain('\\n');
+  });
+});
+
 describe('DELETE /admin/changelogs/:tagId - removing', () => {
   test('removes it from the public changelog immediately', async () => {
     const body = validBody();

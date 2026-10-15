@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const crypto = require('crypto');
+const { withLineBreaks } = require('../utils/text');
 
 /**
  * Public marketing endpoints.
@@ -170,11 +171,15 @@ const getChangelogs = async (req, res, next) => {
       releaseDate: row.release_date,
       badge: row.badge,
       badgeColor: row.badge_color,
-      title: row.title,
+      // Heading fields only: rows written before the write-path fix store an
+      // escaped "\n" there (see utils/text.js). Normalising on read means the
+      // existing entries render with a real line break, without rewriting the
+      // table. Free text keeps any genuine backslash it contains.
+      title: withLineBreaks(row.title),
+      subItemTitle: withLineBreaks(row.sub_item_title),
+      bannerTitle: withLineBreaks(row.banner_title),
       description: row.description,
       tag: row.tag,
-      bannerTitle: row.banner_title,
-      subItemTitle: row.sub_item_title,
       subItemDescription: row.sub_item_description,
       bullets: parseJsonArray(row.bullets),
       note: row.note

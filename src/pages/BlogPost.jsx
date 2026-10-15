@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Clock, Calendar, Share2, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { blogPosts } from '../data/blogData';
 import api from '../utils/api';
+import { withLineBreaks } from '../utils/text';
 import logoImg from '../assets/logo.png';
 import FreeTrialSection from '../components/FreeTrialSection';
 
@@ -122,7 +123,7 @@ export default function BlogPost() {
           />
           <img src={logoImg} alt="Suprema Logo" className="h-16 w-auto object-contain mb-6 relative z-10" />
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight relative z-10 font-tight whitespace-pre-line">
-            {post.bannerTitle || post.banner_title || post.title}
+            {withLineBreaks(post.bannerTitle || post.banner_title || post.title)}
           </h2>
         </div>
 
@@ -191,7 +192,7 @@ export default function BlogPost() {
                 <div className="h-44 bg-gradient-to-b from-[#181920] via-[#0d0d12] to-[#070709] rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center p-4 mb-4 group-hover:border-white/25 transition-all">
                   <img src={logoImg} alt="Suprema Logo" className="h-8 w-auto object-contain mb-2" />
                   <h3 className="text-base font-bold text-white tracking-tight leading-tight font-tight whitespace-pre-line">
-                    {blog.bannerTitle}
+                    {withLineBreaks(blog.bannerTitle)}
                   </h3>
                 </div>
 

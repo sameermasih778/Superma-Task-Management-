@@ -1,4 +1,7 @@
 const pool = require('../config/db');
+// Headings can carry an escaped "\n" from the admin forms; normalise on read so
+// the public card breaks the line instead of printing the escape.
+const { withLineBreaks } = require('../utils/text');
 
 /**
  * Blog Admin Controller — editorial CMS for the public /blog page.
@@ -333,7 +336,7 @@ const getPublicBlogs = async (req, res, next) => {
         ...b,
         tags,
         sections,
-        bannerTitle: b.banner_title || b.title,
+        bannerTitle: withLineBreaks(b.banner_title || b.title),
         readTime: b.read_time || '5 min read',
         categoryColor: b.category_color || 'text-emerald-400',
         categoryBg: b.category_bg || 'bg-emerald-500/10 border-emerald-500/20',
@@ -378,7 +381,7 @@ const getPublicBlogBySlug = async (req, res, next) => {
       ...b,
       tags,
       sections,
-      bannerTitle: b.banner_title || b.title,
+      bannerTitle: withLineBreaks(b.banner_title || b.title),
       readTime: b.read_time || '5 min read',
       categoryColor: b.category_color || 'text-emerald-400',
       categoryBg: b.category_bg || 'bg-emerald-500/10 border-emerald-500/20',

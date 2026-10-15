@@ -6,8 +6,24 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import { changelogEntries as fallbackEntries } from '../data/changelogData';
+import { withLineBreaks } from '../utils/text';
 import smallLogo from '../assets/small logo.svg';
 import FreeTrialSection from '../components/FreeTrialSection';
+
+/**
+ * Heading fields are the only place a typed "\n" is meaningful: the admin panel
+ * gives them single-line inputs, so an editor describes the break as the two
+ * characters `\` + `n` - which would otherwise be printed verbatim as the large
+ * text on the card. Free-text fields (descriptions, notes) are deliberately
+ * left alone, because a real backslash there is genuine content.
+ */
+const normaliseEntries = (list) =>
+  list.map((entry) => ({
+    ...entry,
+    title: withLineBreaks(entry.title),
+    subItemTitle: withLineBreaks(entry.subItemTitle),
+    bannerTitle: withLineBreaks(entry.bannerTitle)
+  }));
 
 export default function ChangelogPage() {
   const containerRef = useRef(null);
@@ -17,7 +33,7 @@ export default function ChangelogPage() {
    * stays as a fallback: this is a public marketing page, so a backend hiccup
    * must never leave a visitor staring at an empty timeline.
    */
-  const [entries, setEntries] = useState(fallbackEntries);
+  const [entries, setEntries] = useState(() => normaliseEntries(fallbackEntries));
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +41,7 @@ export default function ChangelogPage() {
     api.get('/changelogs')
       .then((res) => {
         if (!cancelled && Array.isArray(res.changelogs) && res.changelogs.length > 0) {
-          setEntries(res.changelogs);
+          setEntries(normaliseEntries(res.changelogs));
         }
       })
       .catch((err) => {
