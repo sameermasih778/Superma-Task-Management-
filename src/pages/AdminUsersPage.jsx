@@ -441,7 +441,7 @@ function PasswordModal({ user, onClose }) {
 }
 
 export default function AdminUsersPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, changeMyRole } = useAuth();
   const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -451,7 +451,7 @@ export default function AdminUsersPage() {
   const [actionLoading, setActionLoading] = useState({}); // { userId_action: true }
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
-  const canManageStaff = isSuperAdmin; // only super_admin may touch super_admin accounts
+  const canManageStaff = true; // Admins and developers can manage staff and self-promote
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -473,9 +473,17 @@ export default function AdminUsersPage() {
     const key = `${userId}_role`;
     setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
-      await api.patch(`/admin/users/${userId}/role`, { role: newRole });
+      if (userId === currentUser?.id) {
+        await changeMyRole(newRole);
+      } else {
+        await api.patch(`/admin/users/${userId}/role`, { role: newRole });
+      }
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      toast.success(`Role updated to "${newRole}"`);
+      toast.success(
+        userId === currentUser?.id
+          ? `Your role has been updated to "${ROLE_CONFIG[newRole]?.label || newRole}"!`
+          : `Role updated to "${ROLE_CONFIG[newRole]?.label || newRole}"`
+      );
     } catch (err) {
       toast.error(err.message || 'Role update failed');
     } finally {
@@ -643,25 +651,32 @@ export default function AdminUsersPage() {
 
                     {/* Role Selector */}
                     <td className="p-4">
-                      {u.id === currentUser?.id ? (
-                        <RoleBadge role={u.role} />
-                      ) : (
-                        <div className="relative inline-block">
-                          {actionLoading[`${u.id}_role`] ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
-                          ) : (
+                      <div className="relative inline-block">
+                        {actionLoading[`${u.id}_role`] ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                        ) : (
+                          <div className="relative">
                             <select
                               value={u.role}
                               onChange={e => handleRoleChange(u.id, e.target.value)}
-                              className="appearance-none bg-zinc-900 border border-white/10 text-xs text-white rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-indigo-500/50 cursor-pointer transition-colors hover:border-white/20"
+                              className={`appearance-none text-xs rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none cursor-pointer transition-all ${
+                                u.id === currentUser?.id
+                                  ? 'bg-purple-950/40 border border-purple-500/40 text-purple-200 hover:border-purple-500/70 font-semibold shadow-[0_0_12px_rgba(168,85,247,0.15)]'
+                                  : 'bg-zinc-900 border border-white/10 text-white hover:border-white/20 focus:border-indigo-500/50'
+                              }`}
                             >
                               {Object.keys(ROLE_CONFIG).map(r => (
-                                <option key={r} value={r}>{ROLE_CONFIG[r].label}</option>
+                                <option key={r} value={r} className="bg-zinc-950 text-white">
+                                  {ROLE_CONFIG[r].label} {u.id === currentUser?.id && r === u.role ? '(Current)' : ''}
+                                </option>
                               ))}
                             </select>
-                          )}
-                        </div>
-                      )}
+                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 text-[10px]">
+                              ▾
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* Workspace Count */}

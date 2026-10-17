@@ -282,6 +282,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateSessionUser = (userData, newToken = null) => {
+    if (newToken) {
+      persistSession(newToken, userData);
+      setToken(newToken);
+    }
+    setUser(userData);
+    cacheProfile(userData, activeWorkspace);
+  };
+
+  const changeMyRole = async (newRole) => {
+    if (!user?.id) throw new Error('Not authenticated');
+    const data = await api.patch(`/admin/users/${user.id}/role`, { role: newRole });
+    if (data.success) {
+      const updatedUser = data.user || { ...user, role: newRole };
+      updateSessionUser(updatedUser, data.token || null);
+      window.dispatchEvent(new CustomEvent('suprema:role-changed', { detail: { role: newRole } }));
+    }
+    return data;
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -295,6 +315,8 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       switchWorkspace,
+      updateSessionUser,
+      changeMyRole,
       isAuthenticated: !!user
     }}>
       {children}

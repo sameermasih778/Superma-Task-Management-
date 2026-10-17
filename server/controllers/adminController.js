@@ -1,8 +1,12 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const { logActivity } = require('../utils/activityLogger');
 const { sendMailWithDeadline, isConfigured: isMailConfigured } = require('../config/mailer');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'suprema_jwt_super_secret_key_2026_dev_mode';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
  * GET /api/v1/admin/users
@@ -29,7 +33,8 @@ const getAllUsers = async (req, res, next) => {
 
 /**
  * PATCH /api/v1/admin/users/:id/role
- * Update a user's role (Admin/Super Admin only)
+ * Update a user's role (Super Admin, Admin, Developer)
+ * Allows self-role promotion (including assigning super_admin) and issues an immediate fresh token.
  */
 const updateUserRole = async (req, res, next) => {
   try {
@@ -44,34 +49,59 @@ const updateUserRole = async (req, res, next) => {
       });
     }
 
-    if (parseInt(id, 10) === req.user.id) {
-      return res.status(400).json({
-        success: false,
-        message: 'You cannot change your own role'
-      });
-    }
-
-    // Only a Super Admin may grant the super_admin role, otherwise an
-    // admin/developer could escalate privileges via any account they control.
-    if (role === 'super_admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: Only a Super Admin can grant the 'super_admin' role"
-      });
-    }
+    const targetUserId = parseInt(id, 10);
+    const isSelf = targetUserId === req.user.id;
 
     const [result] = await pool.query(
       'UPDATE users SET role = ? WHERE id = ?',
-      [role, id]
+      [role, targetUserId]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    let newToken = null;
+    let updatedUser = null;
+
+    if (isSelf) {
+      const [[userRow]] = await pool.query(
+        'SELECT id, name, email, role, status, avatar_url FROM users WHERE id = ?',
+        [targetUserId]
+      );
+      if (userRow) {
+        newToken = jwt.sign(
+          {
+            id: userRow.id,
+            email: userRow.email,
+            role: userRow.role,
+            name: userRow.name
+          },
+          JWT_SECRET,
+          { expiresIn: JWT_EXPIRES_IN }
+        );
+        updatedUser = userRow;
+      }
+    }
+
+    // Best-effort activity logging
+    logActivity({
+      workspaceId: req.user.workspace_id || null,
+      userId: req.user.id,
+      action: isSelf ? 'self_updated_role' : 'updated_user_role',
+      entityType: 'user',
+      entityId: targetUserId,
+      metadata: { targetUserId, newRole: role, isSelf }
+    }).catch(() => {});
+
     res.status(200).json({
       success: true,
-      message: `User role updated to '${role}' successfully`
+      message: isSelf
+        ? `Your role was updated to '${role}' successfully`
+        : `User role updated to '${role}' successfully`,
+      isSelf,
+      token: newToken,
+      user: updatedUser
     });
   } catch (error) {
     next(error);
