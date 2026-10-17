@@ -24,6 +24,7 @@ export default function Hero() {
 
   return (
     <section
+      id="hero"
       style={{ paddingTop: navOffset ? navOffset + CARD_OVERHANG_PX + NAVBAR_GAP_PX : undefined }}
       className="relative pt-24 sm:pt-28 md:pt-32 pb-6 md:pb-10 overflow-hidden bg-black text-white min-h-[95vh] flex flex-col justify-between"
     >

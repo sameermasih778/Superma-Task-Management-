@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
+import { getLenis } from '../lib/smoothScroll';
 import RollText from './RollText';
 
 export default function Navbar() {
@@ -16,11 +17,43 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
 
-
-
   const triggerNavbarAnim = useCallback(() => {
     setClickCount((prev) => prev + 1);
   }, []);
+
+  const handleHomeClick = useCallback((e) => {
+    setMobileMenuOpen(false);
+
+    if (location.pathname === '/') {
+      if (e) e.preventDefault();
+
+      const currentScroll = typeof window !== 'undefined'
+        ? (getLenis()?.scroll ?? window.scrollY ?? 0)
+        : 0;
+
+      // If already in the hero section (top of the home page), do absolutely nothing
+      if (currentScroll <= 30) {
+        return;
+      }
+
+      // If scrolled down, smoothly return to the hero section without re-animating the navbar
+      const lenis = getLenis();
+      if (lenis) {
+        try {
+          lenis.scrollTo(0, { immediate: false, duration: 1.0, force: true });
+        } catch {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    // When navigating from a different page to Home, trigger fresh navbar appearance
+    triggerNavbarAnim();
+    setActiveTab('Home');
+  }, [location.pathname, triggerNavbarAnim]);
 
   // Listen for global custom trigger if any external page button calls for it
   useEffect(() => {
@@ -84,7 +117,7 @@ export default function Navbar() {
           {/* Left: Brand Logo */}
           <Link
             to="/"
-            onClick={triggerNavbarAnim}
+            onClick={handleHomeClick}
             className="flex items-center gap-2 pl-2 sm:pl-3 group"
           >
             <div className="flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
@@ -104,9 +137,13 @@ export default function Navbar() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => {
-                    setActiveTab(item.name);
-                    triggerNavbarAnim();
+                  onClick={(e) => {
+                    if (item.name === 'Home') {
+                      handleHomeClick(e);
+                    } else {
+                      setActiveTab(item.name);
+                      triggerNavbarAnim();
+                    }
                   }}
                   className={`group relative px-5 lg:px-6 py-1.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
@@ -212,10 +249,14 @@ export default function Navbar() {
                   <Link
                     key={item.name}
                     to={item.href}
-                    onClick={() => {
-                      setActiveTab(item.name);
-                      setMobileMenuOpen(false);
-                      triggerNavbarAnim();
+                    onClick={(e) => {
+                      if (item.name === 'Home') {
+                        handleHomeClick(e);
+                      } else {
+                        setActiveTab(item.name);
+                        setMobileMenuOpen(false);
+                        triggerNavbarAnim();
+                      }
                     }}
                     className="group px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-all flex items-center justify-between"
                   >
