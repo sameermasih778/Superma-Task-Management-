@@ -217,21 +217,25 @@ export default function TeamsPage() {
 
         {canManage && (
           <div className="flex items-center gap-2.5">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setIsInviteMemberOpen(true)}
-              className="bg-zinc-900 hover:bg-zinc-850 text-white border border-white/10 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+              className="bg-zinc-900 hover:bg-zinc-850 text-white border border-white/10 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
             >
               <UserPlus className="w-4 h-4 text-zinc-400" />
               <span>Invite Member</span>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03, y: -1 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setIsCreateTeamOpen(true)}
               className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Create Team</span>
-            </button>
+            </motion.button>
           </div>
         )}
       </div>
@@ -326,12 +330,16 @@ export default function TeamsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {teams.map((t) => (
+            {teams.map((t, idx) => (
               <motion.div
                 key={t.id}
-                whileHover={{ y: -2 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -4, scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.25)' }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleOpenTeamModal(t)}
-                className="bg-zinc-950 border border-white/10 hover:border-white/25 p-5 rounded-2xl space-y-3 cursor-pointer transition-all shadow-lg group relative"
+                className="bg-zinc-950 border border-white/10 p-5 rounded-2xl space-y-3 cursor-pointer transition-all shadow-lg group relative"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors flex items-center gap-2">
@@ -349,7 +357,7 @@ export default function TeamsPage() {
                 <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-white/5">
                   <span>Created {new Date(t.created_at).toLocaleDateString()}</span>
                   <span className="text-zinc-400 group-hover:text-white flex items-center gap-1 font-semibold transition-colors">
-                    Manage Squad <ChevronRight className="w-3.5 h-3.5" />
+                    Manage Squad <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
               </motion.div>

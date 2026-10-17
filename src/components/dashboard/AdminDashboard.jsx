@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
@@ -201,9 +202,11 @@ export default function AdminDashboard() {
             ) : (
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {healthRows.map((row) => (
-                  <li
+                  <motion.li
                     key={row.label}
-                    className="rounded-xl border border-white/10 bg-zinc-900/50 p-4"
+                    whileHover={{ y: -3, scale: 1.015 }}
+                    transition={{ duration: 0.2 }}
+                    className="rounded-xl border border-white/10 bg-zinc-900/50 p-4 transition-colors hover:border-white/20 cursor-default shadow-lg"
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -211,20 +214,34 @@ export default function AdminDashboard() {
                         {row.label}
                       </span>
                       {row.ok ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" />
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
+                          <span className="relative flex h-2 w-2">
+                            <motion.span
+                              animate={{ scale: [1, 2, 1], opacity: [0.75, 0, 0.75] }}
+                              transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                              className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                            />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                          </span>
                           Healthy
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-red-400">
-                          <XCircle className="h-3 w-3" />
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400">
+                          <span className="relative flex h-2 w-2">
+                            <motion.span
+                              animate={{ scale: [1, 2, 1], opacity: [0.75, 0, 0.75] }}
+                              transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                              className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"
+                            />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                          </span>
                           Down
                         </span>
                       )}
                     </div>
                     <p className="text-sm font-bold text-white">{row.value}</p>
                     <p className="mt-0.5 truncate text-[11px] text-zinc-500">{row.detail}</p>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             )}
@@ -246,7 +263,12 @@ export default function AdminDashboard() {
             ) : (
               <ul className="divide-y divide-white/[0.06]">
                 {users.slice(0, 8).map((u) => (
-                  <li key={u.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <motion.li 
+                    key={u.id} 
+                    whileHover={{ x: 3 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center justify-between gap-3 py-2.5 px-2 rounded-lg transition-colors hover:bg-white/[0.03] first:pt-2 last:pb-2 cursor-pointer"
+                  >
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-[10px] font-black text-white">
                         {u.name?.charAt(0)?.toUpperCase() || '?'}
@@ -268,7 +290,7 @@ export default function AdminDashboard() {
                         </span>
                       )}
                     </span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             )}

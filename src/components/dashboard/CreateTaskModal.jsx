@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Calendar, Clock, User, AlertCircle, Sparkles } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { invalidateWorkspaceCache } from '../../utils/dashboardCache';
 
 export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCreated, taskToEdit = null }) {
   const { activeWorkspace } = useAuth();
@@ -109,6 +110,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
         await api.post('/tasks', payload);
       }
 
+      invalidateWorkspaceCache(activeWorkspace?.id);
       resetForm();
       onClose();
       if (onTaskCreated) onTaskCreated();
@@ -135,10 +137,11 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, onTaskCrea
 
         {/* Modal Window */}
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative bg-zinc-950 border border-white/15 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 z-10 shadow-2xl overflow-hidden"
+          initial={{ scale: 0.93, opacity: 0, y: 16, filter: 'blur(8px)' }}
+          animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
+          exit={{ scale: 0.95, opacity: 0, y: 12, filter: 'blur(4px)' }}
+          transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+          className="relative bg-zinc-950 border border-white/15 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 z-10 shadow-2xl overflow-hidden backdrop-blur-2xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">

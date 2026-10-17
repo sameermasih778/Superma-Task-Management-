@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useScroll, useSpring, useReducedMotion } from 'framer-motion';
 import {
   Sparkles,
   Bell
@@ -9,6 +9,7 @@ import { changelogEntries as fallbackEntries } from '../data/changelogData';
 import { withLineBreaks } from '../utils/text';
 import smallLogo from '../assets/small logo.svg';
 import FreeTrialSection from '../components/FreeTrialSection';
+import AnimatedText from '../components/AnimatedText';
 
 /**
  * Heading fields are the only place a typed "\n" is meaningful: the admin panel
@@ -26,6 +27,7 @@ const normaliseEntries = (list) =>
   }));
 
 export default function ChangelogPage() {
+  const reduce = useReducedMotion();
   const containerRef = useRef(null);
 
   /**
@@ -88,9 +90,9 @@ export default function ChangelogPage() {
         
         {/* Top Suprema Shield Graphic */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)', y: -15 }}
+          initial={{ opacity: 0, scale: 0.85, filter: 'blur(12px)', y: -15 }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', y: 0 }}
-          transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           className="relative mx-auto w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 flex items-center justify-center mb-5 sm:mb-6"
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 sm:w-48 h-36 sm:h-48 bg-white/15 rounded-full blur-2xl pointer-events-none" />
@@ -105,8 +107,8 @@ export default function ChangelogPage() {
           />
 
           <motion.div 
-            animate={{ y: [0, -4, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+            animate={{ y: [0, -6, 0] }}
+            transition={{ repeat: reduce ? 0 : Infinity, duration: 8.5, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
           >
             <img src={smallLogo} alt="Suprema Shield" className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 object-contain" />
@@ -115,9 +117,9 @@ export default function ChangelogPage() {
 
         {/* Top Badge Pill Tag */}
         <motion.div
-          initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
+          initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           whileHover={{ scale: 1.04 }}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs sm:text-sm font-semibold text-emerald-400 mb-4 sm:mb-5 shadow-sm backdrop-blur-md cursor-default"
         >
@@ -129,21 +131,23 @@ export default function ChangelogPage() {
         <div className="relative max-w-4xl mx-auto mb-4 sm:mb-6 px-2">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] sm:max-w-[480px] h-[70px] sm:h-[100px] bg-white/[0.08] rounded-full blur-3xl pointer-events-none" />
           
-          <motion.h1
-            initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.8, delay: 0.15, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white font-tight leading-[1.12] sm:leading-[1.1] relative z-10"
-          >
-            What’s New in Suprema
-          </motion.h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white font-tight leading-[1.12] sm:leading-[1.1] relative z-10">
+            <AnimatedText 
+              text="What’s New in Suprema" 
+              delay={0.25} 
+              duration={1.25} 
+              stagger={0.038} 
+              blurAmount={20} 
+              className="inline-block" 
+            />
+          </h1>
         </div>
 
         {/* Subtitle */}
         <motion.p
-          initial={{ opacity: 0, y: 25, filter: 'blur(8px)' }}
+          initial={{ opacity: 0, y: 20, filter: 'blur(12px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.8, delay: 0.25, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.25, delay: 1.0, ease: [0.16, 1, 0.3, 1] }}
           className="text-xs sm:text-sm md:text-base text-zinc-400 max-w-xl mx-auto mb-8 sm:mb-12 leading-relaxed font-normal px-4"
         >
           Stay updated with the latest features, improvements, and bug fixes added to Suprema regularly.
@@ -151,9 +155,9 @@ export default function ChangelogPage() {
 
         {/* Action Buttons Row */}
         <motion.div
-          initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
+          initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.8, delay: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.2, delay: 1.35, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 relative z-20"
         >
           <motion.a

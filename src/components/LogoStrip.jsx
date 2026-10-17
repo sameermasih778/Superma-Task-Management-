@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 export default function LogoStrip() {
   const logos = [
@@ -10,6 +10,7 @@ export default function LogoStrip() {
     { name: 'PRELUDE', icon: '◬', font: 'font-mono text-sm font-bold tracking-widest' },
     { name: 'Emblem', icon: '▌▌', font: 'font-sans text-lg font-bold tracking-tighter' },
   ];
+  const reduce = useReducedMotion();
 
   return (
     <div className="pt-4 pb-2 border-t border-white/10 overflow-hidden relative z-10 w-full">
@@ -21,8 +22,8 @@ export default function LogoStrip() {
 
       <div className="flex overflow-hidden select-none [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
         <motion.div
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
+          animate={reduce ? undefined : { x: ['0%', '-50%'] }}
+          transition={reduce ? undefined : { duration: 30, ease: 'linear', repeat: Infinity }}
           className="flex items-center gap-12 whitespace-nowrap min-w-full justify-around"
         >
           {[...logos, ...logos].map((logo, idx) => (

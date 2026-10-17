@@ -70,18 +70,23 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     return () => clearTimeout(timer);
   }, [query, activeWorkspace?.id]);
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start justify-center pt-16 sm:pt-24 px-4">
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="bg-zinc-950 border border-white/15 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start justify-center pt-16 sm:pt-24 px-4"
         >
+          <motion.div
+            initial={{ opacity: 0, y: -24, scale: 0.95, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -16, scale: 0.96, filter: 'blur(4px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+            className="bg-zinc-950 border border-white/15 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col"
+          >
           {/* Top Search Input Header */}
           <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-zinc-900/60">
             <Search className="w-5 h-5 text-indigo-400 flex-shrink-0" />
@@ -229,7 +234,8 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
           </div>
 
         </motion.div>
-      </div>
-    </AnimatePresence>
-  );
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 }

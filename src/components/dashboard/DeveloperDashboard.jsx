@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
   CheckSquare,
   Timer,
@@ -122,7 +123,12 @@ export default function DeveloperDashboard() {
                   const pct = tasks.length ? (value / tasks.length) * 100 : 0;
 
                   return (
-                    <li key={key} className="flex items-center gap-4">
+                    <motion.li
+                      key={key}
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-4 rounded-lg px-2 py-1 transition-colors hover:bg-white/[0.03]"
+                    >
                       <span className="w-24 shrink-0 text-[11px] font-semibold capitalize text-zinc-400">
                         {key.replace(/_/g, ' ')}
                       </span>
@@ -132,7 +138,7 @@ export default function DeveloperDashboard() {
                       <span className="w-10 shrink-0 text-right text-xs font-bold tabular-nums text-white">
                         {value}
                       </span>
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>
@@ -164,7 +170,12 @@ export default function DeveloperDashboard() {
                   const isHot = busiest && person.id === busiest.id && person.open > 3;
 
                   return (
-                    <li key={person.id} className="flex items-center gap-3">
+                    <motion.li
+                      key={person.id}
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-white/[0.03]"
+                    >
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-teal-600 text-[10px] font-black text-white">
                         {person.name?.charAt(0)?.toUpperCase() || '?'}
                       </span>
@@ -186,7 +197,7 @@ export default function DeveloperDashboard() {
                           Heaviest
                         </span>
                       )}
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>
@@ -210,7 +221,12 @@ export default function DeveloperDashboard() {
                       ? Math.round((project.completed_tasks / project.total_tasks) * 100)
                       : 0;
                   return (
-                    <li key={project.id} className="rounded-xl border border-white/10 bg-zinc-900/50 p-4">
+                    <motion.li
+                      key={project.id}
+                      whileHover={{ y: -3, scale: 1.015 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-xl border border-white/10 bg-zinc-900/50 p-4 transition-colors hover:border-emerald-500/30"
+                    >
                       <div className="mb-3 flex items-start justify-between gap-2">
                         <span className="flex min-w-0 items-center gap-2">
                           <span
@@ -230,7 +246,7 @@ export default function DeveloperDashboard() {
                         <span className="font-bold tabular-nums text-white">{pct}%</span>
                       </div>
                       <ProgressBar value={pct} />
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>

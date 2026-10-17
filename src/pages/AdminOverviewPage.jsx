@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   Building2, FolderKanban, Users, CheckSquare, Loader2,
   AlertCircle, RefreshCw, TrendingUp, Crown, Code2,
@@ -23,7 +24,11 @@ const StatCard = ({ icon: Icon, label, value, sub, color = 'indigo' }) => {
     purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   };
   return (
-    <div className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 flex items-center gap-4">
+    <motion.div
+      whileHover={{ y: -3, scale: 1.015 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 flex items-center gap-4 transition-colors hover:border-white/20"
+    >
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 border ${colors[color]}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -32,7 +37,7 @@ const StatCard = ({ icon: Icon, label, value, sub, color = 'indigo' }) => {
         <p className="text-2xl font-bold text-white mt-0.5">{value ?? '—'}</p>
         {sub && <p className="text-[11px] text-zinc-600 mt-0.5">{sub}</p>}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

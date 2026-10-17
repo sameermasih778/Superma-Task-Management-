@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Home, LifeBuoy, LayoutDashboard, ArrowLeft,
   Sparkles, FileText, History, Clock, ShieldCheck
@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import RollText from '../components/RollText';
 import smallLogo from '../assets/small logo.svg';
+import AnimatedText from '../components/AnimatedText';
 
 /**
  * 404 - Not Found Page.
@@ -17,6 +18,7 @@ import smallLogo from '../assets/small logo.svg';
  * blurred entrance transitions, interactive micro-animations, and quick navigation.
  */
 export default function NotFoundPage() {
+  const reduce = useReducedMotion();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function NotFoundPage() {
           x: [0, 35, 0],
           y: [0, -25, 0],
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 10, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-purple-600/[0.12] blur-[150px] rounded-full pointer-events-none"
       />
 
@@ -59,7 +61,7 @@ export default function NotFoundPage() {
           x: [0, -30, 0],
           y: [0, 30, 0],
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 12, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute bottom-1/4 left-1/4 w-[500px] h-[350px] bg-indigo-500/[0.1] blur-[140px] rounded-full pointer-events-none"
       />
 
@@ -68,7 +70,7 @@ export default function NotFoundPage() {
           scale: [1, 1.15, 1],
           opacity: [0.08, 0.18, 0.08],
         }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute top-1/3 right-1/4 w-[450px] h-[350px] bg-blue-600/[0.08] blur-[130px] rounded-full pointer-events-none"
       />
 
@@ -112,8 +114,8 @@ export default function NotFoundPage() {
 
           {/* Floating Logo with continuous gentle bob */}
           <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+            animate={{ y: [0, -6, 0] }}
+            transition={{ repeat: reduce ? 0 : Infinity, duration: 8.5, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
           >
             <img
@@ -126,9 +128,9 @@ export default function NotFoundPage() {
 
         {/* Top Status Badge Pill with Sparkles */}
         <motion.div
-          initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
+          initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           whileHover={{ scale: 1.05 }}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-xs sm:text-sm font-semibold text-purple-400 mb-6 shadow-sm backdrop-blur-md cursor-default select-none"
         >
@@ -142,9 +144,9 @@ export default function NotFoundPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 sm:w-72 h-20 bg-white/10 blur-3xl rounded-full pointer-events-none" />
 
           <motion.h1
-            initial={{ opacity: 0, scale: 0.9, y: 20, filter: 'blur(8px)' }}
+            initial={{ opacity: 0, scale: 0.9, y: 20, filter: 'blur(16px)' }}
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.7, delay: 0.15, ease: [0.21, 0.47, 0.32, 0.98] }}
+            transition={{ duration: 1.25, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
             aria-label="Error 404"
             className="select-none font-tight font-extrabold tracking-tight leading-none text-[84px] sm:text-[110px] md:text-[130px] bg-gradient-to-b from-white via-zinc-200 to-zinc-500/70 bg-clip-text text-transparent drop-shadow-2xl"
           >
@@ -153,20 +155,22 @@ export default function NotFoundPage() {
         </div>
 
         {/* Main Heading */}
-        <motion.h2
-          initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, delay: 0.25, ease: [0.21, 0.47, 0.32, 0.98] }}
-          className="mt-2 font-tight font-bold text-white leading-tight text-[28px] sm:text-[38px] md:text-[46px]"
-        >
-          Oops, page not found
-        </motion.h2>
+        <h2 className="mt-2 font-tight font-bold text-white leading-tight text-[28px] sm:text-[38px] md:text-[46px]">
+          <AnimatedText 
+            text="Oops, page not found" 
+            delay={0.4} 
+            duration={1.25} 
+            stagger={0.038} 
+            blurAmount={20} 
+            className="inline-block" 
+          />
+        </h2>
 
         {/* Subtitle / Descriptive Body */}
         <motion.p
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
+          initial={{ opacity: 0, y: 20, filter: 'blur(12px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 1.25, delay: 1.0, ease: [0.16, 1, 0.3, 1] }}
           className="mt-4 mx-auto max-w-lg font-tight text-[15px] sm:text-[17px] font-medium leading-relaxed text-zinc-400"
         >
           We couldn&apos;t find the page you&apos;re looking for. It might have been moved,
@@ -175,9 +179,9 @@ export default function NotFoundPage() {
 
         {/* ==================== 3. ACTION BUTTONS ==================== */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
+          initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 1.2, delay: 1.35, ease: [0.16, 1, 0.3, 1] }}
           className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto"
         >
           {/* Back to Home CTA */}

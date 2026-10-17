@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { User, Mail, Lock, ArrowRight, ShieldAlert, KeyRound, CheckCircle2, RotateCcw, Edit2 } from 'lucide-react';
 
 export default function RegisterPage() {
+  const reduce = useReducedMotion();
   const [step, setStep] = useState(1); // 1: Input details, 2: Verification Code
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -106,7 +107,7 @@ export default function RegisterPage() {
           x: [0, 30, 0],
           y: [0, -20, 0]
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 10, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-indigo-600/[0.1] blur-[130px] rounded-full pointer-events-none"
       />
 

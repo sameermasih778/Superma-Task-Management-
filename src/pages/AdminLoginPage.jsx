@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lock, Mail, ArrowRight, ShieldAlert, Sparkles, ShieldCheck, Terminal, Eye, EyeOff, UserCheck, KeyRound } from 'lucide-react';
 
 export default function AdminLoginPage() {
+  const reduce = useReducedMotion();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -59,7 +60,7 @@ export default function AdminLoginPage() {
           x: [0, 40, 0],
           y: [0, -30, 0]
         }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[380px] bg-indigo-600/[0.12] blur-[140px] rounded-full pointer-events-none"
       />
       <motion.div
@@ -69,7 +70,7 @@ export default function AdminLoginPage() {
           x: [0, -40, 0],
           y: [0, 30, 0]
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 10, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute bottom-1/3 left-1/3 w-[500px] h-[320px] bg-emerald-500/[0.08] blur-[120px] rounded-full pointer-events-none"
       />
 

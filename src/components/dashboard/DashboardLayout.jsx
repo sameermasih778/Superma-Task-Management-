@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import DashboardHeader from './DashboardHeader';
 import CreateTaskModal from './CreateTaskModal';
 import usePublicNavOffset from '../../hooks/usePublicNavOffset';
 
 export default function DashboardLayout() {
+  const location = useLocation();
+  const reduce = useReducedMotion();
+  const mainRef = useRef(null);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   // Which project the new task should be filed under. The header button has no
@@ -15,13 +20,16 @@ export default function DashboardLayout() {
   // the header button. Lives here because the modal does.
   const [editingTask, setEditingTask] = useState(null);
 
-  // Replaces the old hardcoded `pt-20 lg:pt-24`. The public Navbar is fixed and
-  // is 116px tall at desktop, so that padding left DashboardHeader (search,
-  // New Task, notifications) sitting 20px underneath it.
-  //
-  // Returns 0 on staff portals, where App.jsx renders no public Navbar - so the
-  // admin/developer dashboard keeps its original zero-offset layout exactly.
+  // Replaces the old hardcoded `pt-20 lg:pt-24`. Returns 0 on staff and member
+  // dashboards now that the public Navbar is cleanly removed from /dashboard.
   const navOffset = usePublicNavOffset();
+
+  // Reset scroll to top when opening another section
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [location.pathname]);
 
   return (
     <div
@@ -42,18 +50,48 @@ export default function DashboardLayout() {
           }}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-            <Outlet
-              context={{
-                isNewTaskModalOpen,
-                setIsNewTaskModalOpen,
-                editingTask,
-                setEditingTask,
-                setNewTaskProjectId
-              }}
-            />
-          </main>
-        </div>
+        <main ref={mainRef} className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={
+                reduce
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 16, filter: 'blur(6px)' }
+              }
+              animate={
+                reduce
+                  ? { opacity: 1 }
+                  : { opacity: 1, y: 0, filter: 'blur(0px)' }
+              }
+              exit={
+                reduce
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -10, filter: 'blur(4px)', transition: { duration: 0.16, ease: 'easeIn' } }
+              }
+              transition={
+                reduce
+                  ? { duration: 0.15 }
+                  : {
+                      duration: 0.36,
+                      ease: [0.16, 1, 0.3, 1]
+                    }
+              }
+              className="w-full"
+            >
+              <Outlet
+                context={{
+                  isNewTaskModalOpen,
+                  setIsNewTaskModalOpen,
+                  editingTask,
+                  setEditingTask,
+                  setNewTaskProjectId
+                }}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
       {/*
         The modal lives here rather than inside TasksPage so the header button

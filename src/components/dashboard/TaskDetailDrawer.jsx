@@ -26,9 +26,14 @@ import {
 import api, { assetUrl } from '../../utils/api';
 import { getAvatarFor } from '../../utils/avatar';
 import { useAuth } from '../../context/AuthContext';
+import { invalidateWorkspaceCache } from '../../utils/dashboardCache';
 
-export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated }) {
+export default function TaskDetailDrawer({ task, isOpen, onClose, onTaskUpdated: rawOnTaskUpdated }) {
   const { user, activeWorkspace } = useAuth();
+  const onTaskUpdated = () => {
+    invalidateWorkspaceCache(activeWorkspace?.id);
+    if (rawOnTaskUpdated) rawOnTaskUpdated();
+  };
   const [activeTab, setActiveTab] = useState('subtasks'); // 'subtasks' | 'comments' | 'attachments'
 
   // Task Details & Edit State

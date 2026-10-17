@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   CheckSquare,
@@ -123,9 +124,11 @@ export default function MemberDashboard() {
                     task.due_date && new Date(task.due_date) < new Date();
 
                   return (
-                    <li
+                    <motion.li
                       key={task.id}
-                      className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex items-center justify-between gap-4 py-3 px-2 rounded-lg transition-colors hover:bg-white/[0.03] first:pt-2 last:pb-2 cursor-pointer"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <span
@@ -164,7 +167,7 @@ export default function MemberDashboard() {
                         <PriorityPill priority={task.priority} />
                         <StatusPill status={task.status} />
                       </div>
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>
@@ -193,9 +196,11 @@ export default function MemberDashboard() {
                       : 0;
 
                   return (
-                    <li
+                    <motion.li
                       key={project.id}
-                      className="rounded-xl border border-white/10 bg-zinc-900/50 p-4"
+                      whileHover={{ y: -3, scale: 1.015 }}
+                      transition={{ duration: 0.2 }}
+                      className="rounded-xl border border-white/10 bg-zinc-900/50 p-4 transition-colors hover:border-white/20 cursor-pointer shadow-lg"
                     >
                       <div className="mb-3 flex items-start justify-between gap-2">
                         <span className="flex min-w-0 items-center gap-2">
@@ -216,7 +221,7 @@ export default function MemberDashboard() {
                         <span className="font-bold tabular-nums text-white">{pct}%</span>
                       </div>
                       <ProgressBar value={pct} />
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>
@@ -233,7 +238,8 @@ export default function MemberDashboard() {
               {[
                 { to: '/dashboard/tasks', label: 'Tasks board', hint: 'Kanban view of all work' },
                 { to: '/dashboard/teams', label: 'Teams', hint: 'See who you work with' },
-                { to: '/dashboard/calendar', label: 'Calendar', hint: 'Your upcoming deadlines' }
+                { to: '/dashboard/calendar', label: 'Calendar', hint: 'Your upcoming deadlines' },
+                { to: '/', label: 'Public website', hint: 'Explore landing pages & blog' }
               ].map((l) => (
                 <Link
                   key={l.to}

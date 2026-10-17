@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -10,9 +10,24 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
+  const reduce = useReducedMotion();
 
   const [activeTab, setActiveTab] = useState('Home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+
+
+
+  const triggerNavbarAnim = useCallback(() => {
+    setClickCount((prev) => prev + 1);
+  }, []);
+
+  // Listen for global custom trigger if any external page button calls for it
+  useEffect(() => {
+    const handleCustomTrigger = () => triggerNavbarAnim();
+    window.addEventListener('suprema:trigger-navbar-anim', handleCustomTrigger);
+    return () => window.removeEventListener('suprema:trigger-navbar-anim', handleCustomTrigger);
+  }, [triggerNavbarAnim]);
 
   const isDashboardRoute = location.pathname.startsWith('/dashboard');
 
@@ -38,11 +53,40 @@ export default function Navbar() {
 
   return (
     <header data-public-navbar className="fixed top-0 left-0 right-0 z-50 pt-4 md:pt-6 px-3 sm:px-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto max-w-5xl w-full bg-black/95 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-2xl flex flex-col transition-all">
+      <motion.div
+        key={`${location.pathname}-${clickCount}`}
+        initial={
+          reduce
+            ? { opacity: 0 }
+            : { opacity: 0, y: -80, scale: 0.88, filter: 'blur(8px)' }
+        }
+        animate={
+          reduce
+            ? { opacity: 1 }
+            : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+        }
+        transition={
+          reduce
+            ? { duration: 0.2 }
+            : {
+                type: 'spring',
+                stiffness: 75,
+                damping: 20,
+                mass: 1.1,
+                delay: 0.3
+              }
+        }
+        style={{ transformOrigin: '50% 0%' }}
+        className="pointer-events-auto max-w-5xl w-full bg-black/95 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-2xl flex flex-col transition-all"
+      >
         
         <div className="flex items-center justify-between w-full">
           {/* Left: Brand Logo */}
-          <Link to="/" className="flex items-center gap-2 pl-2 sm:pl-3 group">
+          <Link
+            to="/"
+            onClick={triggerNavbarAnim}
+            className="flex items-center gap-2 pl-2 sm:pl-3 group"
+          >
             <div className="flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
               <img src={logoImg} alt="Suprema Logo" className="h-12 sm:h-12 w-auto object-contain" />
             </div>
@@ -60,7 +104,10 @@ export default function Navbar() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => setActiveTab(item.name)}
+                  onClick={() => {
+                    setActiveTab(item.name);
+                    triggerNavbarAnim();
+                  }}
                   className={`group relative px-5 lg:px-6 py-1.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     isActive ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
@@ -78,7 +125,10 @@ export default function Navbar() {
                 <a
                   key={item.name}
                   href={item.href}
-                  onClick={() => setActiveTab(item.name)}
+                  onClick={() => {
+                    setActiveTab(item.name);
+                    triggerNavbarAnim();
+                  }}
                   className={`group relative px-5 lg:px-6 py-1.5 text-[15px] leading-none font-medium tracking-[-0.005em] transition-colors rounded-[10px] ${
                     activeTab === item.name ? 'text-white' : 'text-zinc-400 hover:text-white'
                   }`}
@@ -102,7 +152,7 @@ export default function Navbar() {
               <>
                 {/* Secondary action - shown only outside the app itself */}
                 {!isDashboardRoute && (
-                  <Link to="/dashboard" className="hidden md:block">
+                  <Link to="/dashboard" onClick={triggerNavbarAnim} className="hidden md:block">
                     <button className="group flex items-center justify-center gap-2 h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap shadow-sm">
                       <LayoutDashboard className="w-4 h-4 text-indigo-400" />
                       <RollText>Dashboard</RollText>
@@ -121,14 +171,14 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/login" className="hidden md:block group">
+                <Link to="/login" onClick={triggerNavbarAnim} className="hidden md:block group">
                   {/* Identical height/padding to the white Contact us button -
                       the two CTA buttons must sit on one optical baseline. */}
                   <button className="group flex items-center justify-center h-11 px-5 sm:px-6 text-sm sm:text-base font-bold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-all rounded-xl cursor-pointer whitespace-nowrap">
                     <RollText>Sign In</RollText>
                   </button>
                 </Link>
-                <Link to="/contact" className="hidden md:block group">
+                <Link to="/contact" onClick={triggerNavbarAnim} className="hidden md:block group">
                   <button className="group px-5 py-2.5 sm:px-6 sm:py-2.5 text-sm sm:text-base font-bold text-black bg-white hover:bg-zinc-200 transition-all rounded-xl shadow-lg active:scale-95 cursor-pointer whitespace-nowrap">
                     <RollText>Contact us</RollText>
                   </button>
@@ -165,6 +215,7 @@ export default function Navbar() {
                     onClick={() => {
                       setActiveTab(item.name);
                       setMobileMenuOpen(false);
+                      triggerNavbarAnim();
                     }}
                     className="group px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-lg transition-all flex items-center justify-between"
                   >
@@ -178,7 +229,10 @@ export default function Navbar() {
                       {!isDashboardRoute && (
                         <Link
                           to="/dashboard"
-                          onClick={() => setMobileMenuOpen(false)}
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            triggerNavbarAnim();
+                          }}
                           className="group flex items-center justify-center gap-2 w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
                         >
                           <LayoutDashboard className="w-4 h-4 text-indigo-400" />
@@ -197,14 +251,20 @@ export default function Navbar() {
                     <>
                       <Link
                         to="/login"
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          triggerNavbarAnim();
+                        }}
                         className="group block w-full text-center px-4 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-all"
                       >
                         <RollText>Sign In</RollText>
                       </Link>
                       <Link
                         to="/contact"
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          triggerNavbarAnim();
+                        }}
                         className="group block w-full text-center px-4 py-2.5 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all active:scale-95"
                       >
                         <RollText>Contact us</RollText>
@@ -217,7 +277,7 @@ export default function Navbar() {
           )}
         </AnimatePresence>
 
-      </div>
+      </motion.div>
     </header>
   );
 }

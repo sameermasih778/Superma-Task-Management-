@@ -24,14 +24,20 @@ import {
   ChevronDown
 } from 'lucide-react';
 import TaskDetailDrawer from '../components/dashboard/TaskDetailDrawer';
+import { getWorkspaceCollection, setWorkspaceCollection, invalidateWorkspaceCache } from '../utils/dashboardCache';
 
 export default function TasksPage() {
   const { user, activeWorkspace } = useAuth();
+  const wsId = activeWorkspace?.id;
+  const cachedProjs = getWorkspaceCollection(wsId, 'projects');
+  const cachedMembers = getWorkspaceCollection(wsId, 'members');
 
-  const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [projects, setProjects] = useState(() => cachedProjs?.data || []);
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    return cachedProjs?.data?.length > 0 ? cachedProjs.data[0].id.toString() : '';
+  });
   const [tasks, setTasks] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState(() => cachedMembers?.data || []);
   const [loading, setLoading] = useState(true);
 
   // View Mode: 'board' | 'list'
@@ -57,15 +63,30 @@ export default function TasksPage() {
   // Fetch Projects and Workspace Members
   useEffect(() => {
     const fetchInitData = async () => {
-      if (!activeWorkspace?.id) return;
+      if (!wsId) return;
+      const cP = getWorkspaceCollection(wsId, 'projects');
+      const cM = getWorkspaceCollection(wsId, 'members');
+
+      if (cP?.isFresh && cM?.isFresh) {
+        setProjects(cP.data);
+        setMembers(cM.data);
+        if (cP.data.length > 0 && !selectedProjectId) {
+          setSelectedProjectId(cP.data[0].id.toString());
+        }
+        return;
+      }
+
       try {
         const [projRes, memRes] = await Promise.all([
-          api.get(`/projects?workspace_id=${activeWorkspace.id}`),
-          api.get(`/workspaces/${activeWorkspace.id}/members`)
+          api.get(`/projects?workspace_id=${wsId}`),
+          api.get(`/workspaces/${wsId}/members`)
         ]);
         const projs = projRes.projects || [];
+        const mems = memRes.members || [];
         setProjects(projs);
-        setMembers(memRes.members || []);
+        setMembers(mems);
+        setWorkspaceCollection(wsId, 'projects', projs);
+        setWorkspaceCollection(wsId, 'members', mems);
         if (projs.length > 0 && !selectedProjectId) {
           setSelectedProjectId(projs[0].id.toString());
         }
@@ -74,7 +95,7 @@ export default function TasksPage() {
       }
     };
     fetchInitData();
-  }, [activeWorkspace?.id]);
+  }, [wsId]);
 
   // Fetch Tasks for Selected Project
   const fetchTasks = useCallback(async () => {
@@ -99,6 +120,7 @@ export default function TasksPage() {
     try {
       await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
       setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status: newStatus } : t)));
+      invalidateWorkspaceCache(activeWorkspace?.id);
     } catch (err) {
       console.error('Task status update failed:', err.message);
     }
@@ -407,8 +429,10 @@ export default function TasksPage() {
                         setSelectedTask(task);
                         setIsDrawerOpen(true);
                       }}
-                      whileHover={{ scale: 1.01 }}
-                      className={`p-4 bg-zinc-900/60 border border-white/10 rounded-xl space-y-3 cursor-pointer hover:border-white/30 transition-all shadow-md group ${
+                      whileHover={{ y: -3, scale: 1.015 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className={`p-4 bg-zinc-900/60 border border-white/10 rounded-xl space-y-3 cursor-pointer hover:border-white/30 transition-colors shadow-md hover:shadow-xl hover:shadow-black/60 group ${
                         draggedTaskId === task.id ? 'opacity-40' : ''
                       }`}
                     >

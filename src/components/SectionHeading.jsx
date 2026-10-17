@@ -1,21 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useReveal } from '../lib/motion';
 
-export default function SectionHeading({ 
-  eyebrow, 
-  title, 
-  description, 
+export default function SectionHeading({
+  eyebrow,
+  title,
+  description,
   align = 'center',
-  className = '' 
+  className = ''
 }) {
   const alignmentClass = align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center mx-auto';
+  const reveal = useReveal({ duration: 0.7 });
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: 0.6 }}
+    <motion.div
+      {...reveal}
       className={`max-w-3xl mb-16 ${alignmentClass} ${className}`}
     >
       {eyebrow && (

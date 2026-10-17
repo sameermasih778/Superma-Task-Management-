@@ -1,7 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Shield } from 'lucide-react';
 import smallLogo from '../assets/small logo.svg';
+import AnimatedText from '../components/AnimatedText';
 
 const sections = [
   {
@@ -37,8 +38,10 @@ const sections = [
 ];
 
 export default function PrivacyPolicy() {
+  const reduce = useReducedMotion();
+
   return (
-    <div className="bg-black text-whites min-h-screen pt-24 sm:pt-32 md:pt-36 pb-16 overflow-hidden relative font-sans">
+    <div className="bg-black text-white min-h-screen pt-24 sm:pt-32 md:pt-36 pb-16 overflow-hidden relative font-sans">
       <div
         className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
@@ -50,28 +53,41 @@ export default function PrivacyPolicy() {
 
       <section className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12 sm:mb-16">
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ y: [0, -6, 0] }}
+          transition={{ repeat: reduce ? 0 : Infinity, duration: 8.5, ease: 'easeInOut' }}
           className="relative mx-auto w-16 h-20 flex items-center justify-center mb-5"
         >
           <img src={smallLogo} alt="Suprema" className="w-8 h-8 object-contain" />
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs sm:text-sm font-semibold text-emerald-400 mb-5"
         >
-          <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
           <span>Privacy Policy</span>
         </motion.div>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white font-tight mb-4">
-          Privacy Policy
+          <AnimatedText 
+            text="Privacy Policy" 
+            delay={0.25} 
+            duration={1.25} 
+            stagger={0.038} 
+            blurAmount={20} 
+            className="inline-block" 
+          />
         </h1>
-        <p className="text-sm text-zinc-400 leading-relaxed">
+        <motion.p 
+          initial={{ opacity: 0, y: 20, filter: 'blur(12px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 1.25, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-sm text-zinc-400 leading-relaxed"
+        >
           Last updated: November 30, 2024. This policy explains how Suprema collects, uses, and protects your information.
-        </p>
+        </motion.p>
       </section>
 
       <article className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 pb-16">

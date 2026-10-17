@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Search, Bell, Plus, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -59,15 +60,19 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
       <header className="h-16 bg-zinc-950/80 border-b border-white/10 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
         {/* Left: Mobile Menu Toggle & Global Search Trigger */}
         <div className="flex items-center gap-3 flex-1">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.94 }}
             onClick={onToggleSidebar}
             aria-label="Toggle navigation menu"
             className="lg:hidden w-11 h-11 shrink-0 flex items-center justify-center text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </motion.button>
 
-          <div
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            transition={{ duration: 0.15 }}
             onClick={() => setIsSearchOpen(true)}
             className="relative max-w-md w-full hidden sm:flex items-center bg-zinc-900/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-zinc-400 hover:border-white/20 transition-all cursor-pointer justify-between group"
           >
@@ -78,24 +83,29 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
             <kbd className="hidden md:inline-flex items-center gap-0.5 text-[10px] bg-zinc-800 border border-white/10 text-zinc-400 px-1.5 py-0.5 rounded font-mono">
               Ctrl K
             </kbd>
-          </div>
+          </motion.div>
         </div>
 
       {/* Right Actions: New Task Button & Notifications Bell */}
       <div className="flex items-center gap-3">
         {canManageTasks && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.15 }}
             onClick={onOpenNewTaskModal}
             className="bg-white text-black font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-zinc-200 transition-all shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">New Task</span>
-          </button>
+          </motion.button>
         )}
 
         {/* Notifications Bell Dropdown */}
         <div className="relative">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowBellDropdown(!showBellDropdown)}
             aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
             aria-expanded={showBellDropdown}
@@ -103,15 +113,26 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center">
+              <motion.span
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow-lg"
+              >
                 {unreadCount}
-              </span>
+              </motion.span>
             )}
-          </button>
+          </motion.button>
 
           {/* Notifications Dropdown Modal */}
-          {showBellDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
+          <AnimatePresence>
+            {showBellDropdown && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl"
+              >
               <div className="p-3 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-white">Notifications</span>
@@ -161,8 +182,9 @@ export default function DashboardHeader({ onToggleSidebar, onOpenNewTaskModal })
                   ))
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
         </div>
       </div>
 

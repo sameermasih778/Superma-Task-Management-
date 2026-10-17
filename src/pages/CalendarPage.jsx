@@ -16,32 +16,54 @@ import {
 import { motion } from 'framer-motion';
 import TaskDetailDrawer from '../components/dashboard/TaskDetailDrawer';
 
+import { getWorkspaceCollection, setWorkspaceCollection } from '../utils/dashboardCache';
+
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarPage() {
   const { activeWorkspace } = useAuth();
+  const wsId = activeWorkspace?.id;
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const cachedProjs = getWorkspaceCollection(wsId, 'projects');
+  const cachedTasks = getWorkspaceCollection(wsId, 'tasks');
+
+  const [tasks, setTasks] = useState(() => cachedTasks?.data || []);
+  const [projects, setProjects] = useState(() => cachedProjs?.data || []);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cachedTasks?.data && !cachedProjs?.data);
 
   // Task Drawer State
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Fetch Projects and Tasks
-  const fetchData = async () => {
-    if (!activeWorkspace?.id) return;
-    setLoading(true);
+  // Fetch Projects and Tasks with SWR caching
+  const fetchData = async (force = false) => {
+    if (!wsId) return;
+    const cProjs = getWorkspaceCollection(wsId, 'projects');
+    const cTasks = getWorkspaceCollection(wsId, 'tasks');
+    if (cProjs?.isFresh && cTasks?.isFresh && !force) {
+      setProjects(cProjs.data);
+      setTasks(cTasks.data);
+      setLoading(false);
+      return;
+    }
+
+    if (!cProjs?.data && !cTasks?.data) {
+      setLoading(true);
+    }
+
     try {
       const [projRes, tasksRes] = await Promise.all([
-        api.get(`/projects?workspace_id=${activeWorkspace.id}`),
-        api.get(`/tasks?workspace_id=${activeWorkspace.id}`)
+        api.get(`/projects?workspace_id=${wsId}`),
+        api.get(`/tasks?workspace_id=${wsId}`)
       ]);
-      setProjects(projRes.projects || []);
-      setTasks(tasksRes.tasks || []);
+      const pList = projRes.projects || [];
+      const tList = tasksRes.tasks || [];
+      setProjects(pList);
+      setTasks(tList);
+      setWorkspaceCollection(wsId, 'projects', pList);
+      setWorkspaceCollection(wsId, 'tasks', tList);
     } catch (err) {
       console.warn('Failed to load calendar data:', err.message);
     } finally {
@@ -51,7 +73,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchData();
-  }, [activeWorkspace?.id]);
+  }, [wsId]);
 
   // Calendar calculations
   const year = currentDate.getFullYear();
@@ -204,64 +226,79 @@ export default function CalendarPage() {
           </div>
 
           {/* Month Stepper */}
-          <div className="flex items-center bg-zinc-900 border border-white/10 rounded-xl overflow-hidden p-0.5">
-            <button
+          <div className="flex items-center bg-zinc-900 border border-white/10 rounded-xl overflow-hidden p-0.5 shadow-sm">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={handlePrevMonth}
               className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
               title="Previous Month"
             >
               <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.94 }}
               onClick={handleToday}
               className="px-3 py-1 text-xs font-semibold text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             >
               Today
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={handleNextMonth}
               className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
               title="Next Month"
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Monthly Summary Metric Chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between">
+        <motion.div
+          whileHover={{ y: -2, scale: 1.01 }}
+          className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between shadow-md transition-colors"
+        >
           <div>
             <span className="text-[10px] text-zinc-500 uppercase font-bold block">Current Period</span>
             <span className="text-sm font-bold text-white">{monthName} {year}</span>
           </div>
           <CalendarIcon className="w-5 h-5 text-indigo-400" />
-        </div>
+        </motion.div>
 
-        <div className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between">
+        <motion.div
+          whileHover={{ y: -2, scale: 1.01 }}
+          className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between shadow-md transition-colors"
+        >
           <div>
             <span className="text-[10px] text-zinc-500 uppercase font-bold block">Due This Month</span>
             <span className="text-sm font-bold text-white">{monthStats.total} Tasks</span>
           </div>
           <Clock className="w-5 h-5 text-amber-400" />
-        </div>
+        </motion.div>
 
-        <div className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between">
+        <motion.div
+          whileHover={{ y: -2, scale: 1.01 }}
+          className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between shadow-md transition-colors"
+        >
           <div>
             <span className="text-[10px] text-zinc-500 uppercase font-bold block">Completed</span>
             <span className="text-sm font-bold text-emerald-400">{monthStats.completed} Tasks</span>
           </div>
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-        </div>
+        </motion.div>
 
-        <div className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between">
+        <motion.div
+          whileHover={{ y: -2, scale: 1.01 }}
+          className="p-3 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-between shadow-md transition-colors"
+        >
           <div>
             <span className="text-[10px] text-zinc-500 uppercase font-bold block">Overdue Deadlines</span>
             <span className="text-sm font-bold text-red-400">{monthStats.overdue} Tasks</span>
           </div>
           <AlertCircle className="w-5 h-5 text-red-400" />
-        </div>
+        </motion.div>
       </div>
 
       {/* Main Calendar Grid */}

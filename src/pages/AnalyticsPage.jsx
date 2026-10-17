@@ -16,28 +16,57 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getWorkspaceCollection, setWorkspaceCollection } from '../utils/dashboardCache';
 
 export default function AnalyticsPage() {
   const { activeWorkspace } = useAuth();
+  const wsId = activeWorkspace?.id;
 
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [members, setMembers] = useState([]);
+  const cachedProjs = getWorkspaceCollection(wsId, 'projects');
+  const cachedTasks = getWorkspaceCollection(wsId, 'tasks');
+  const cachedMembers = getWorkspaceCollection(wsId, 'members');
+
+  const [projects, setProjects] = useState(() => cachedProjs?.data || []);
+  const [tasks, setTasks] = useState(() => cachedTasks?.data || []);
+  const [members, setMembers] = useState(() => cachedMembers?.data || []);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cachedProjs?.data && !cachedTasks?.data);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
-    if (!activeWorkspace?.id) return;
+  const fetchData = async (force = false) => {
+    if (!wsId) return;
+    const cProjs = getWorkspaceCollection(wsId, 'projects');
+    const cTasks = getWorkspaceCollection(wsId, 'tasks');
+    const cMembers = getWorkspaceCollection(wsId, 'members');
+
+    if (cProjs?.isFresh && cTasks?.isFresh && cMembers?.isFresh && !force) {
+      setProjects(cProjs.data);
+      setTasks(cTasks.data);
+      setMembers(cMembers.data);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (!cProjs?.data && !cTasks?.data) {
+      setLoading(true);
+    }
+
     try {
       const [projRes, taskRes, memRes] = await Promise.all([
-        api.get(`/projects?workspace_id=${activeWorkspace.id}`),
-        api.get(`/tasks?workspace_id=${activeWorkspace.id}`),
-        api.get(`/workspaces/${activeWorkspace.id}/members`)
+        api.get(`/projects?workspace_id=${wsId}`),
+        api.get(`/tasks?workspace_id=${wsId}`),
+        api.get(`/workspaces/${wsId}/members`)
       ]);
-      setProjects(projRes.projects || []);
-      setTasks(taskRes.tasks || []);
-      setMembers(memRes.members || []);
+      const pList = projRes.projects || [];
+      const tList = taskRes.tasks || [];
+      const mList = memRes.members || [];
+      setProjects(pList);
+      setTasks(tList);
+      setMembers(mList);
+      setWorkspaceCollection(wsId, 'projects', pList);
+      setWorkspaceCollection(wsId, 'tasks', tList);
+      setWorkspaceCollection(wsId, 'members', mList);
     } catch (err) {
       console.warn('Failed to load analytics data:', err.message);
     } finally {
@@ -47,13 +76,12 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    setLoading(true);
     fetchData();
-  }, [activeWorkspace?.id]);
+  }, [wsId]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    fetchData(true);
   };
 
   // Filter tasks based on selected project
@@ -147,34 +175,53 @@ export default function AnalyticsPage() {
             </select>
           </div>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handleRefresh}
             disabled={refreshing}
-            className="bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+            className="bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-zinc-400 ${refreshing ? 'animate-spin text-white' : ''}`} />
             <span>{refreshing ? 'Updating...' : 'Refresh'}</span>
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Completion Velocity */}
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl relative overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+          whileHover={{ y: -4, scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.22)' }}
+          className="bg-zinc-950 border border-white/10 p-5 rounded-2xl relative overflow-hidden shadow-lg transition-colors"
+        >
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span className="text-xs font-semibold">Completion Rate</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
           <p className="text-3xl font-extrabold text-white">{stats.completionRate}%</p>
           <div className="w-full h-1.5 bg-zinc-800 rounded-full mt-3 overflow-hidden">
-            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${stats.completionRate}%` }} />
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${stats.completionRate}%` }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full bg-emerald-400 rounded-full"
+            />
           </div>
           <p className="text-[10px] text-zinc-500 mt-2">{stats.completed} of {stats.total} tasks completed</p>
-        </div>
+        </motion.div>
 
         {/* Card 2: Time Logged */}
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl relative overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          whileHover={{ y: -4, scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.22)' }}
+          className="bg-zinc-950 border border-white/10 p-5 rounded-2xl relative overflow-hidden shadow-lg transition-colors"
+        >
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span className="text-xs font-semibold">Hours Logged</span>
             <Clock className="w-4 h-4 text-indigo-400" />
@@ -187,10 +234,16 @@ export default function AnalyticsPage() {
             <Zap className="w-3 h-3" />
             <span>{stats.totalEst > 0 ? `${((stats.totalActual / stats.totalEst) * 100).toFixed(0)}% budget consumed` : 'No budget set'}</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3: Active Pipeline */}
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          whileHover={{ y: -4, scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.22)' }}
+          className="bg-zinc-950 border border-white/10 p-5 rounded-2xl shadow-lg transition-colors"
+        >
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span className="text-xs font-semibold">In Progress / Review</span>
             <CheckSquare className="w-4 h-4 text-amber-400" />
@@ -200,10 +253,16 @@ export default function AnalyticsPage() {
             {stats.inProgress} active • {stats.inReview} under review
           </p>
           <p className="text-[10px] text-amber-400 mt-1">{stats.todo} tasks queued</p>
-        </div>
+        </motion.div>
 
         {/* Card 4: Overdue Deadlines */}
-        <div className="bg-zinc-950 border border-white/10 p-5 rounded-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          whileHover={{ y: -4, scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.22)' }}
+          className="bg-zinc-950 border border-white/10 p-5 rounded-2xl shadow-lg transition-colors"
+        >
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span className="text-xs font-semibold">Overdue Tasks</span>
             <AlertCircle className={`w-4 h-4 ${stats.overdue > 0 ? 'text-red-400' : 'text-zinc-500'}`} />
@@ -214,7 +273,7 @@ export default function AnalyticsPage() {
           <p className="text-[11px] text-zinc-500 mt-2">
             {stats.overdue === 0 ? 'All deadlines on schedule' : 'Require immediate attention'}
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {/* Row 2: Status Breakdown & Priority Distribution */}
@@ -265,29 +324,45 @@ export default function AnalyticsPage() {
           </h2>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+            <motion.div
+              whileHover={{ scale: 1.025, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl cursor-default"
+            >
               <span className="text-[10px] uppercase font-bold text-red-400 block">Urgent</span>
               <p className="text-2xl font-black text-white mt-1">{stats.urgent}</p>
               <p className="text-[10px] text-zinc-400 mt-1">Requires hotfix or priority review</p>
-            </div>
+            </motion.div>
 
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+            <motion.div
+              whileHover={{ scale: 1.025, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl cursor-default"
+            >
               <span className="text-[10px] uppercase font-bold text-amber-400 block">High</span>
               <p className="text-2xl font-black text-white mt-1">{stats.high}</p>
               <p className="text-[10px] text-zinc-400 mt-1">Core sprint commitments</p>
-            </div>
+            </motion.div>
 
-            <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
+            <motion.div
+              whileHover={{ scale: 1.025, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl cursor-default"
+            >
               <span className="text-[10px] uppercase font-bold text-indigo-400 block">Medium</span>
               <p className="text-2xl font-black text-white mt-1">{stats.medium}</p>
               <p className="text-[10px] text-zinc-400 mt-1">Standard feature roadmap</p>
-            </div>
+            </motion.div>
 
-            <div className="p-4 bg-zinc-900 border border-white/10 rounded-2xl">
+            <motion.div
+              whileHover={{ scale: 1.025, y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 bg-zinc-900 border border-white/10 rounded-2xl cursor-default"
+            >
               <span className="text-[10px] uppercase font-bold text-zinc-400 block">Low</span>
               <p className="text-2xl font-black text-white mt-1">{stats.low}</p>
               <p className="text-[10px] text-zinc-400 mt-1">Minor polish or backlog items</p>
-            </div>
+            </motion.div>
           </div>
         </div>
 

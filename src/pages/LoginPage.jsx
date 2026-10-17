@@ -1,7 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lock, Mail, ArrowRight, ShieldAlert, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
@@ -12,6 +12,7 @@ import ForgotPasswordModal from '../components/ForgotPasswordModal';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function LoginPage() {
+  const reduce = useReducedMotion();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,8 +33,8 @@ export default function LoginPage() {
       sessionStorage.setItem('suprema_login_type', 'user');
       localStorage.setItem('suprema_last_login_type', 'user');
       await login(email, password, 'user');
-      // Simple user lands on the main website home page with Navbar
-      navigate('/');
+      // Simple user lands directly on dashboard
+      navigate('/dashboard');
     } catch (err) {
       const errorMessage = err.data?.message || err.message || 'Login failed. Please check credentials.';
       setError(errorMessage);
@@ -53,7 +54,7 @@ export default function LoginPage() {
           x: [0, 30, 0],
           y: [0, -20, 0]
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 10, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-white/[0.07] blur-[120px] rounded-full pointer-events-none"
       />
       <motion.div
@@ -63,7 +64,7 @@ export default function LoginPage() {
           x: [0, -30, 0],
           y: [0, 20, 0]
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 12, repeat: reduce ? 0 : Infinity, ease: 'easeInOut' }}
         className="absolute bottom-1/4 left-1/3 w-[450px] h-[300px] bg-indigo-500/[0.08] blur-[100px] rounded-full pointer-events-none"
       />
 
@@ -136,7 +137,7 @@ export default function LoginPage() {
                   sessionStorage.setItem('suprema_login_type', 'user');
                   localStorage.setItem('suprema_last_login_type', 'user');
                   await loginWithGoogle(accessToken);
-                  navigate('/');
+                  navigate('/dashboard');
                 } catch (err) {
                   setError(err.data?.message || err.message || 'Google sign-in failed. Please try again.');
                 }

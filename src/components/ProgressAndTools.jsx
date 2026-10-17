@@ -1,19 +1,16 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { 
   BarChart3, 
   Check, 
-  Sparkles, 
   Bell, 
-  Search, 
   SlidersHorizontal,
   Plus,
   Users,
   GitBranch,
   Layers,
-  Folder,
-  ChevronRight
+  Folder
 } from 'lucide-react';
 
 export default function ProgressAndTools() {
@@ -27,8 +24,46 @@ export default function ProgressAndTools() {
   const filterChipsRow1 = ['Status', 'Assignee', 'Creator', 'Priority', 'Labels'];
   const filterChipsRow2 = ['Content', 'Project', 'Project status', 'Roadmap'];
 
+  const reduced = useReducedMotion();
+
+  // The first block is pinned for ~600px of scroll. Without something moving
+  // during that hold the pin reads as a "dead zone" where the page looks
+  // frozen. So the pinned mockup is driven by scroll progress: the completion
+  // bar fills and a coloured wash wipes left-to-right across each timeline bar
+  // in turn. The bars themselves stay visible at all times - only the wash is
+  // clipped - so the mockup is never blank before the pin begins.
+  //
+  // The offset is deliberately aligned to the pin itself. With the column
+  // stuck at `top: 20vh` inside a `150vh` grid, the pin runs from the grid's
+  // top reaching 20% of the viewport to its bottom reaching 85% - progress is
+  // 0 at the start of the hold and 1 the moment it releases.
+  const gridRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: gridRef,
+    offset: ['start 20%', 'end 85%'],
+  });
+
+  const HIDDEN = 'inset(0% 100% 0% 0%)';
+  const SHOWN = 'inset(0% 0% 0% 0%)';
+
+  const progressWidth = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
+  const progressLabel = useTransform(scrollYProgress, (v) => `${Math.round(v * 100)}%`);
+
+  // Sequential wipe-in, each bar handing over to the next.
+  const bar1 = useTransform(scrollYProgress, [0.04, 0.28], [HIDDEN, SHOWN]);
+  const bar2 = useTransform(scrollYProgress, [0.28, 0.5], [HIDDEN, SHOWN]);
+  const bar3 = useTransform(scrollYProgress, [0.5, 0.72], [HIDDEN, SHOWN]);
+  const bar4 = useTransform(scrollYProgress, [0.72, 0.96], [HIDDEN, SHOWN]);
+
+  // The "Assign Task" pill rises slightly at the end, as if the work is
+  // complete. It stays fully visible throughout (never opacity 0), so the
+  // mockup never looks like it is missing a piece.
+  const pillY = useTransform(scrollYProgress, [0.78, 0.98], [14, 0]);
+
+  const reveal = (mv) => (reduced ? { clipPath: SHOWN } : { clipPath: mv });
+
   return (
-    <section id="progress-tools" className="py-24 md:py-32 bg-black text-white relative overflow-hidden border-t border-white/10">
+    <section id="progress-tools" className="py-24 md:py-32 bg-black text-white relative overflow-clip border-t border-white/10">
       
       {/* Background Ambient Glows */}
       <div className="absolute top-1/4 left-10 w-96 h-96 bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
@@ -36,8 +71,20 @@ export default function ProgressAndTools() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-32">
         
-        {/* ==================== BLOCK 1: PROGRESS TRACKING ==================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        {/* ==================== BLOCK 1: PROGRESS TRACKING ====================
+            Pinned on lg+ (matches the reference site, which pins this exact
+            "Monitor Progress Faster Than Ever." headline): the row holds near the
+            top of the viewport while the page keeps scrolling, and the extra
+            `lg:h-[150vh]` on the grid supplies that scroll distance.
+            A pin with nothing to show for it just looks frozen, so the mockup is
+            scroll-linked: the completion bar fills and the four timeline bars
+            wipe in one after the other across the hold (see `scrollYProgress`).
+            NOTE: the <section> uses `overflow-clip`, not `overflow-hidden`, because
+            `overflow-hidden` creates a scroll container that traps `position: sticky`. */}
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center lg:items-start lg:h-[150vh]"
+        >
           
           {/* Left Text & Stats Content */}
           <motion.div
@@ -45,7 +92,7 @@ export default function ProgressAndTools() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-6"
+            className="lg:col-span-6 lg:sticky lg:top-[20vh]"
           >
             {/* Top Pill Tag */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-400 mb-6">
@@ -100,7 +147,7 @@ export default function ProgressAndTools() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-6"
+            className="lg:col-span-6 lg:sticky lg:top-[20vh]"
           >
             <div className="bg-[#09090b] border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
               
@@ -118,6 +165,24 @@ export default function ProgressAndTools() {
                 </div>
               </div>
 
+              {/* Scroll-linked completion bar: this is what the pin exists for.
+                  It fills across the pinned scroll, so the hold shows motion
+                  instead of looking frozen. */}
+              <div className="flex items-center gap-3 border-b border-white/5 pb-3 mb-4">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                  Completion
+                </span>
+                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <motion.div
+                    style={reduced ? { width: '100%' } : { width: progressWidth }}
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-purple-500"
+                  />
+                </div>
+                <motion.span className="text-[10px] font-mono text-amber-400 w-9 text-right">
+                  {reduced ? '100%' : progressLabel}
+                </motion.span>
+              </div>
+
               {/* Timeline Months Bar */}
               <div className="flex justify-between text-[10px] text-zinc-500 font-mono border-b border-white/5 pb-3 mb-5 px-1">
                 <span>JAN</span>
@@ -131,46 +196,72 @@ export default function ProgressAndTools() {
                 <span>SEP</span>
               </div>
 
-              {/* Gantt Timeline Task Rows */}
+              {/* Gantt Timeline Task Rows. Each bar stays visible at all times;
+                  the scroll-driven wash wipes across it as the section is
+                  pinned, so the mockup is never blank before the pin starts. */}
               <div className="space-y-4 mb-6">
                 
                 {/* Task Bar 1 */}
                 <div className="relative">
-                  <div className="w-[60%] bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300 shadow-md">
-                    <div className="font-semibold text-white">Design & Development</div>
-                    <div className="text-[9px] text-amber-400 font-mono">Jan 02 to Apr 04</div>
+                  <div className="relative overflow-hidden w-[60%] bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300 shadow-md">
+                    <motion.div
+                      aria-hidden="true"
+                      style={reveal(bar1)}
+                      className="absolute inset-0 bg-amber-500/25 pointer-events-none"
+                    />
+                    <div className="relative font-semibold text-white">Design & Development</div>
+                    <div className="relative text-[9px] text-amber-400 font-mono">Jan 02 to Apr 04</div>
                   </div>
                 </div>
 
                 {/* Task Bar 2 */}
                 <div className="relative flex justify-center">
-                  <div className="w-[65%] ml-auto bg-blue-500/10 border border-blue-500/30 rounded-xl p-2.5 text-xs text-blue-300 shadow-md">
-                    <div className="font-semibold text-white">Prototyping & Wireframing</div>
-                    <div className="text-[9px] text-blue-400 font-mono">May 17 to Aug 03</div>
+                  <div className="relative overflow-hidden w-[65%] ml-auto bg-blue-500/10 border border-blue-500/30 rounded-xl p-2.5 text-xs text-blue-300 shadow-md">
+                    <motion.div
+                      aria-hidden="true"
+                      style={reveal(bar2)}
+                      className="absolute inset-0 bg-blue-500/25 pointer-events-none"
+                    />
+                    <div className="relative font-semibold text-white">Prototyping & Wireframing</div>
+                    <div className="relative text-[9px] text-blue-400 font-mono">May 17 to Aug 03</div>
                   </div>
                 </div>
 
                 {/* Task Bar 3 */}
                 <div className="relative">
-                  <div className="w-[50%] bg-purple-500/10 border border-purple-500/30 rounded-xl p-2.5 text-xs text-purple-300 shadow-md">
-                    <div className="font-semibold text-white">Web Maintenance</div>
-                    <div className="text-[9px] text-purple-400 font-mono">Jan 02 to Jun 01</div>
+                  <div className="relative overflow-hidden w-[50%] bg-purple-500/10 border border-purple-500/30 rounded-xl p-2.5 text-xs text-purple-300 shadow-md">
+                    <motion.div
+                      aria-hidden="true"
+                      style={reveal(bar3)}
+                      className="absolute inset-0 bg-purple-500/25 pointer-events-none"
+                    />
+                    <div className="relative font-semibold text-white">Web Maintenance</div>
+                    <div className="relative text-[9px] text-purple-400 font-mono">Jan 02 to Jun 01</div>
                   </div>
                 </div>
 
                 {/* Task Bar 4 */}
                 <div className="relative flex justify-end">
-                  <div className="w-[45%] bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 text-xs text-emerald-300 shadow-md">
-                    <div className="font-semibold text-white">Deployment & Hosting</div>
-                    <div className="text-[9px] text-emerald-400 font-mono">Jul 10 to Sep 04</div>
+                  <div className="relative overflow-hidden w-[45%] bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 text-xs text-emerald-300 shadow-md">
+                    <motion.div
+                      aria-hidden="true"
+                      style={reveal(bar4)}
+                      className="absolute inset-0 bg-emerald-500/25 pointer-events-none"
+                    />
+                    <div className="relative font-semibold text-white">Deployment & Hosting</div>
+                    <div className="relative text-[9px] text-emerald-400 font-mono">Jul 10 to Sep 04</div>
                   </div>
                 </div>
 
               </div>
 
-              {/* Floating Bottom Assignee Action Pill */}
+              {/* Floating Bottom Assignee Action Pill - rises as the pin
+                  finishes, so the hold ends on a completed state. */}
               <div className="flex items-center justify-center pt-2">
-                <div className="inline-flex items-center gap-3 bg-zinc-900/90 border border-white/15 px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md">
+                <motion.div
+                  style={reduced ? undefined : { y: pillY }}
+                  className="inline-flex items-center gap-3 bg-zinc-900/90 border border-white/15 px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md"
+                >
                   <span className="text-xs font-semibold text-white">Assign Task</span>
                   <div className="flex -space-x-2">
                     <div className="w-6 h-6 rounded-full bg-amber-500 border border-black text-[9px] font-bold text-black flex items-center justify-center">
@@ -183,7 +274,7 @@ export default function ProgressAndTools() {
                       S
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </div>
 
             </div>

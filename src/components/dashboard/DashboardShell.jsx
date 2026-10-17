@@ -21,9 +21,15 @@ import { accentVars } from './accents';
 
 export function DashboardShell({ tier, children, className = '' }) {
   return (
-    <div style={accentVars(tier)} className={`space-y-6 ${className}`}>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      style={accentVars(tier)} 
+      className={`space-y-6 ${className}`}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -37,19 +43,25 @@ export function DashboardBanner({
   actions = []
 }) {
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-[color:var(--accent-ring)] p-6"
+    <motion.div
+      initial={{ opacity: 0, y: -16, filter: 'blur(8px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      className="relative overflow-hidden rounded-2xl border border-[color:var(--accent-ring)] p-6 shadow-2xl backdrop-blur-xl"
       style={{ background: 'var(--accent-gradient)' }}
     >
-      <div
+      <motion.div
+        animate={{ scale: [1, 1.15, 1], opacity: [0.45, 0.8, 0.45], x: [0, 8, 0] }}
+        transition={{ duration: 7.5, repeat: Infinity, ease: 'easeInOut' }}
         className="pointer-events-none absolute -top-24 right-0 h-56 w-72 blur-3xl"
         style={{ background: 'var(--accent-glow)' }}
       />
       <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-all"
               style={{
                 color: 'var(--accent)',
                 background: 'var(--accent-soft)',
@@ -57,12 +69,12 @@ export function DashboardBanner({
               }}
             >
               {eyebrow}
-            </span>
+            </motion.span>
             {chips.map((chip) => (
               <span
                 key={chip.label}
                 title={chip.title}
-                className="rounded-md border border-white/10 bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-zinc-400"
+                className="rounded-md border border-white/10 bg-zinc-900/90 px-2 py-0.5 font-mono text-[10px] text-zinc-400"
               >
                 {chip.label}
               </span>
@@ -78,20 +90,25 @@ export function DashboardBanner({
         {actions.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             {actions.map((action) => (
-              <Link
+              <motion.div
                 key={action.to + action.label}
-                to={action.to}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-black transition-all hover:brightness-110"
-                style={{ background: 'var(--accent)' }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.97 }}
               >
-                {action.icon}
-                {action.label}
-              </Link>
+                <Link
+                  to={action.to}
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-black transition-all hover:brightness-110 shadow-lg shadow-black/25"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  {action.icon}
+                  {action.label}
+                </Link>
+              </motion.div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -108,9 +125,11 @@ const TONE_CLASSES = {
 export function StatCard({ label, value, hint, icon, tone = 'neutral', loading = false }) {
   return (
     <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18 }}
-      className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-5"
+      initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -4, scale: 1.015, transition: { duration: 0.25 } }}
+      className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-xl transition-colors hover:border-white/20"
     >
       {/* Hairline of accent along the top edge */}
       <span
@@ -135,8 +154,11 @@ export function StatCard({ label, value, hint, icon, tone = 'neutral', loading =
 
 export function SectionCard({ title, icon, action, children, className = '', bodyClassName = '' }) {
   return (
-    <section
-      className={`rounded-2xl border border-white/10 bg-zinc-950 ${className}`}
+    <motion.section
+      initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+      className={`rounded-2xl border border-white/10 bg-zinc-950 transition-colors hover:border-white/15 shadow-xl ${className}`}
     >
       {(title || action) && (
         <header className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
@@ -148,7 +170,7 @@ export function SectionCard({ title, icon, action, children, className = '', bod
         </header>
       )}
       <div className={`p-5 ${bodyClassName}`}>{children}</div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -170,9 +192,12 @@ export function ProgressBar({ value = 0, className = '' }) {
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div className={`h-1.5 w-full overflow-hidden rounded-full bg-zinc-900 ${className}`}>
-      <div
-        className="h-full rounded-full transition-all duration-500"
-        style={{ width: `${pct}%`, background: 'var(--accent)' }}
+      <motion.div
+        className="h-full rounded-full"
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: 'var(--accent)' }}
       />
     </div>
   );
@@ -230,14 +255,22 @@ export function ActivityFeed({ activities = [], limit = 8, emptyHint = 'No activ
   return (
     <ol className="relative space-y-4 pl-5">
       <span className="absolute inset-y-1 left-[5px] w-px bg-white/[0.07]" />
-      {activities.slice(0, limit).map((act) => (
-        <li key={act.id} className="relative">
-          <span
+      {activities.slice(0, limit).map((act, idx) => (
+        <motion.li 
+          key={act.id} 
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: idx * 0.04 }}
+          className="relative group cursor-default"
+        >
+          <motion.span
+            animate={{ scale: [1, 1.4, 1], opacity: [0.75, 1, 0.75] }}
+            transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut', delay: idx * 0.15 }}
             className="absolute -left-5 top-1.5 h-2 w-2 rounded-full ring-4 ring-zinc-950"
             style={{ background: 'var(--accent)' }}
           />
           <div className="flex items-baseline justify-between gap-3">
-            <p className="truncate text-xs font-semibold text-white">
+            <p className="truncate text-xs font-semibold text-white group-hover:text-[color:var(--accent)] transition-colors">
               {act.user_name || 'System'}
             </p>
             <time className="shrink-0 font-mono text-[10px] text-zinc-500">
@@ -248,7 +281,7 @@ export function ActivityFeed({ activities = [], limit = 8, emptyHint = 'No activ
             {String(act.action || '').replace(/_/g, ' ').toLowerCase()}
             {act.entity_type ? ` · ${act.entity_type}` : ''}
           </p>
-        </li>
+        </motion.li>
       ))}
     </ol>
   );

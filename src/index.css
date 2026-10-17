@@ -72,10 +72,56 @@
 
 .animate-marquee {
   animation: marquee 25s linear infinite;
+  /* Promote the track to its own compositor layer so the 25s infinite
+     transform animates on the GPU instead of re-painting the subtree each frame.
+     Scoped to the marquee only: blanket `will-change` just leaks layers. */
+  will-change: transform;
 }
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* Lenis styles (mirrors lenis/dist/lenis.css for the installed version) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+/* index.html sets Tailwind's `scroll-smooth`. Native smooth scrolling fights
+   Lenis's own rAF-driven scrolling, so neutralise it whenever Lenis is active. */
+html.lenis {
+  scroll-behavior: auto !important;
+}
+
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+
+.lenis [data-lenis-prevent],
+.lenis [data-lenis-prevent-wheel],
+.lenis [data-lenis-prevent-touch],
+.lenis [data-lenis-prevent-vertical],
+.lenis [data-lenis-prevent-horizontal] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-marquee {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Hide scrollbar utility */

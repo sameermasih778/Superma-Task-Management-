@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import usePublicNavOffset from '../../hooks/usePublicNavOffset';
 import { getAvatarUrl } from '../../utils/avatar';
@@ -28,6 +29,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const { user, activeWorkspace, switchWorkspace, logout } = useAuth();
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isStaffOrAdmin = ['super_admin', 'admin', 'developer'].includes(user?.role);
 
@@ -93,7 +95,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* Workspace Selector Dropdown Button */}
           <div className="relative">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
               className="w-full bg-zinc-900/80 hover:bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 flex items-center justify-between text-left text-xs transition-all cursor-pointer"
             >
@@ -103,34 +106,44 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                   {activeWorkspace?.name || 'Select Workspace'}
                 </span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${showWorkspaceDropdown ? 'rotate-180' : ''}`} />
-            </button>
+              <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${showWorkspaceDropdown ? 'rotate-180' : ''}`} />
+            </motion.button>
 
             {/* Workspace Dropdown Menu */}
-            {showWorkspaceDropdown && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-zinc-900 border border-white/15 rounded-xl shadow-2xl overflow-hidden z-50 p-1">
-                <div className="px-2 py-1.5 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
-                  Your Workspaces
-                </div>
-                {user?.workspaces?.map((ws) => (
-                  <button
-                    key={ws.id}
-                    onClick={() => {
-                      switchWorkspace(ws);
-                      setShowWorkspaceDropdown(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                      activeWorkspace?.id === ws.id
-                        ? 'bg-white text-black font-semibold'
-                        : 'text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <span className="truncate">{ws.name}</span>
-                    <span className="text-[9px] opacity-75 uppercase">{ws.role}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <AnimatePresence>
+              {showWorkspaceDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute top-full left-0 w-full mt-2 bg-zinc-900 border border-white/15 rounded-xl shadow-2xl overflow-hidden z-50 p-1 backdrop-blur-xl"
+                >
+                  <div className="px-2 py-1.5 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                    Your Workspaces
+                  </div>
+                  {user?.workspaces?.map((ws) => (
+                    <motion.button
+                      key={ws.id}
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        switchWorkspace(ws);
+                        setShowWorkspaceDropdown(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        activeWorkspace?.id === ws.id
+                          ? 'bg-white text-black font-semibold'
+                          : 'text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                    >
+                      <span className="truncate">{ws.name}</span>
+                      <span className="text-[9px] opacity-75 uppercase">{ws.role}</span>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -138,39 +151,63 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         <nav className="p-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isExactActive =
+              item.path === '/dashboard'
+                ? location.pathname === '/dashboard'
+                : location.pathname.startsWith(item.path);
+
             return (
-              <NavLink
+              <motion.div
                 key={item.path}
-                to={item.path}
-                end={item.path === '/dashboard'}
-                onClick={() => setIsOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-white text-black shadow-md'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
-                  }`
-                }
+                whileHover={{ x: 3 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.15 }}
+                className="relative"
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{item.label}</span>
-              </NavLink>
+                <NavLink
+                  to={item.path}
+                  end={item.path === '/dashboard'}
+                  onClick={() => setIsOpen(false)}
+                  className={`relative z-10 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                    isExactActive
+                      ? 'text-black font-bold'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </NavLink>
+
+                {isExactActive && (
+                  <motion.div
+                    layoutId="activeSidebarIndicator"
+                    className="absolute inset-0 rounded-xl bg-white shadow-md z-0"
+                    transition={{
+                      type: 'spring',
+                      stiffness: 380,
+                      damping: 30
+                    }}
+                  />
+                )}
+              </motion.div>
             );
           })}
 
-          {/* EXCLUSIVE FOR ADMIN & DEVELOPER LOGIN: Public Link Button */}
-          {isStaffOrAdmin && (
-            <div className="pt-2 mt-2 border-t border-white/10">
-              <NavLink
-                to="/"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-indigo-400 hover:text-white hover:bg-indigo-500/10 transition-all border border-indigo-500/20"
-              >
-                <Globe className="w-4 h-4 flex-shrink-0 text-indigo-400" />
-                <span>Public Link</span>
-              </NavLink>
-            </div>
-          )}
+          {/* Public Site Button: Return to public website
+          <motion.div
+            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.98 }}
+            className="pt-2 mt-2 border-t border-white/10"
+          >
+            <NavLink
+              to="/"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-indigo-400 hover:text-white hover:bg-indigo-500/10 transition-all border border-indigo-500/20"
+            >
+              <Globe className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+              <span>Public Site</span>
+            </NavLink>
+          </motion.div> */}
         </nav>
       </div>
 
@@ -215,14 +252,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               </div>
             </NavLink>
           )}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.92 }}
             onClick={handleLogout}
             title="Log Out"
             aria-label="Log out"
             className="shrink-0 cursor-pointer rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
           >
             <LogOut className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
       </div>
     </aside>

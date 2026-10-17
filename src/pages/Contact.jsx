@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Mail, Headset, Phone, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import smallLogo from '../assets/small logo.svg';
 import ContactForm from '../components/ContactForm';
 import FAQSection from '../components/FAQSection';
+import AnimatedText from '../components/AnimatedText';
 
 const supportPills = ['24/7 support', 'Live Chat Support', 'Email Support'];
 
@@ -32,6 +33,7 @@ const contactCards = [
 ];
 
 export default function Contact() {
+  const reduce = useReducedMotion();
   useEffect(() => {
     const previousTitle = document.title;
     document.title = 'Contact Us | Get in Touch with Us';
@@ -71,8 +73,8 @@ export default function Contact() {
             }}
           />
           <motion.div
-            animate={{ y: [0, -4, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+            animate={{ y: [0, -6, 0] }}
+            transition={{ repeat: reduce ? 0 : Infinity, duration: 8.5, ease: 'easeInOut' }}
             className="absolute inset-0 flex items-center justify-center"
           >
             <img src={smallLogo} alt="Suprema Shield" className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 object-contain" />
@@ -80,9 +82,9 @@ export default function Contact() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
+          initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs sm:text-sm font-semibold text-emerald-400 mb-4 sm:mb-5 shadow-sm backdrop-blur-md"
         >
           <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
@@ -91,29 +93,31 @@ export default function Contact() {
 
         <div className="relative max-w-4xl mx-auto mb-4 sm:mb-6 px-2">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[480px] h-[80px] bg-white/[0.08] rounded-full blur-3xl pointer-events-none" />
-          <motion.h1
-            initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.8, delay: 0.15, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white font-tight leading-[1.12] relative z-10"
-          >
-            Get in Touch with Us
-          </motion.h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white font-tight leading-[1.12] relative z-10">
+            <AnimatedText 
+              text="Get in Touch with Us" 
+              delay={0.25} 
+              duration={1.25} 
+              stagger={0.038} 
+              blurAmount={20} 
+              className="inline-block" 
+            />
+          </h1>
         </div>
 
         <motion.p
-          initial={{ opacity: 0, y: 25, filter: 'blur(8px)' }}
+          initial={{ opacity: 0, y: 20, filter: 'blur(12px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.8, delay: 0.25, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 1.25, delay: 1.0, ease: [0.16, 1, 0.3, 1] }}
           className="text-xs sm:text-sm md:text-base text-zinc-400 max-w-xl mx-auto mb-6 sm:mb-8 leading-relaxed font-normal px-4"
         >
           Reach out to us for inquiries, support, or partnership opportunities. We&apos;re here to assist you!
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 1.2, delay: 1.35, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-10 sm:mb-12"
         >
           {supportPills.map((label) => (
