@@ -135,25 +135,31 @@ export default function useDashboardData() {
     fetchData();
   }, [fetchData]);
 
-  /* ── Derived metrics ─────────────────────────────────────────── */
+  /* ── Derived metrics (defensive guards to ensure zero runtime crashes) ── */
 
-  const counts = tasks.reduce(
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeTeams = Array.isArray(teams) ? teams : [];
+  const safeActivities = Array.isArray(activities) ? activities : [];
+
+  const counts = safeTasks.reduce(
     (acc, t) => {
-      acc[t.status] = (acc[t.status] || 0) + 1;
-      if (t.status === 'done') acc.done += 1;
+      if (t && t.status) {
+        acc[t.status] = (acc[t.status] || 0) + 1;
+      }
       return acc;
     },
     { done: 0, in_progress: 0, todo: 0, backlog: 0, review: 0 }
   );
 
-  const now = fetchedAt;
-  const overdue = tasks.filter(
-    (t) => t.status !== 'done' && t.due_date && new Date(t.due_date).getTime() < now
+  const now = fetchedAt || Date.now();
+  const overdue = safeTasks.filter(
+    (t) => t && t.status !== 'done' && t.due_date && new Date(t.due_date).getTime() < now
   ).length;
 
-  // Workload per assignee, used by the developer dashboard.
-  const workload = tasks.reduce((map, t) => {
-    if (!t.assignee_id) return map;
+  // Workload per assignee, used by developer dashboard
+  const workload = safeTasks.reduce((map, t) => {
+    if (!t || !t.assignee_id) return map;
     const key = t.assignee_id;
     if (!map[key]) {
       map[key] = {
@@ -169,19 +175,19 @@ export default function useDashboardData() {
     return map;
   }, {});
 
-  const completionRate = tasks.length ? Math.round((counts.done / tasks.length) * 100) : 0;
+  const completionRate = safeTasks.length ? Math.round(((counts.done || 0) / safeTasks.length) * 100) : 0;
 
-  const activeProjects = projects.filter(
-    (p) => p.status === 'active' || p.status === 'planning'
+  const activeProjects = safeProjects.filter(
+    (p) => p && (p.status === 'active' || p.status === 'planning')
   );
 
   return {
     workspaceId: activeWorkspace?.id,
     workspaceName: activeWorkspace?.name,
-    projects,
-    tasks,
-    teams,
-    activities,
+    projects: safeProjects,
+    tasks: safeTasks,
+    teams: safeTeams,
+    activities: safeActivities,
     loading,
     error,
     refresh: (force = true) => fetchData({ force: Boolean(force) }),

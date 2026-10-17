@@ -82,12 +82,13 @@ export default function AdminDashboard() {
     fetchAdminData();
   }, [fetchAdminData]);
 
-  const roleCounts = users.reduce((acc, u) => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const roleCounts = safeUsers.reduce((acc, u) => {
     acc[u.role] = (acc[u.role] || 0) + 1;
     return acc;
   }, {});
 
-  const suspended = users.filter((u) => u.status === 'suspended').length;
+  const suspended = safeUsers.filter((u) => u.status === 'suspended').length;
   const dbUp = health?.database === 'CONNECTED';
   const apiUp = health?.status === 'UP';
 

@@ -1,14 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/toast/ToastProvider';
-import { AnimatePresence, motion } from 'framer-motion';
 import SmoothScroll from './components/SmoothScroll';
-import { EASE, DURATION } from './lib/motion';
 import { scrollToTop } from './lib/smoothScroll';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import MemberRoute from './components/MemberRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import Navbar from './components/Navbar';
 import AdminNavbar from './components/AdminNavbar';
@@ -63,30 +62,12 @@ function ScrollToTop() {
   return null;
 }
 
-/** Stable AnimatePresence key for the whole dashboard shell. */
-const DASHBOARD_ROUTE_KEY = '__dashboard';
-
 function MainLayout() {
   const location = useLocation();
   const { user } = useAuth();
   
   const isDashboardRoute = location.pathname.startsWith('/dashboard');
   const isAdminLoginRoute = location.pathname.startsWith('/admin-login') || location.pathname.startsWith('/staff-portal');
-
-  // Page transitions: public pages cross-fade. The dashboard uses a stable key
-  // so AnimatePresence never remounts its layout (sidebar, header, open modals)
-  // when moving between dashboard tabs.
-  const routeTransitionKey = isDashboardRoute ? DASHBOARD_ROUTE_KEY : location.pathname;
-  const routeTransition = isDashboardRoute
-    ? { initial: false, animate: { opacity: 1 } }
-    : {
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0, transition: { duration: DURATION.base, ease: EASE.out } },
-        exit: { opacity: 0, y: -8, transition: { duration: DURATION.instant, ease: EASE.out } },
-      };
-
-  // Check if current user is Admin or Developer based on actual role
-  const isStaffOrAdmin = ['super_admin', 'admin', 'developer'].includes(user?.role);
 
   // Navbar Rendering Rules:
   // 1. On Admin Login page (/admin-login, /staff-portal): render <AdminNavbar />
@@ -102,35 +83,12 @@ function MainLayout() {
     return <Navbar />;
   };
 
-  // `initial={false}` must be scoped to the route wrapper below, never to
-  // <AnimatePresence>. AnimatePresence publishes its `initial` through
-  // PresenceContext to every descendant motion component that does not declare
-  // its own `initial`; those descendants then skip their mount animation and
-  // snap straight to their `animate` target. For `repeat: Infinity` keyframe
-  // animations (the logo marquee and the ambient orbs) that target is the LAST
-  // keyframe, so the animation never plays at all. Suppressing only the
-  // wrapper's own first-load fade keeps every child animation intact.
-  const isInitialMount = useRef(true);
-  useEffect(() => {
-    isInitialMount.current = false;
-  }, []);
-
-  // Stable for the very first render only, so the initial page load does not
-  // fade the whole page in. Reading it during render is intentional.
-  // oxlint-disable-next-line react/refs
-  const skipEnterAnimation = isInitialMount.current;
-
   return (
     <div className="min-h-screen flex flex-col bg-dark-1 text-white selection:bg-white/20 selection:text-white">
       {renderNavbar()}
       {!isDashboardRoute && !isAdminLoginRoute && <SmoothScroll />}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={routeTransitionKey}
-          className="flex-grow"
-          {...routeTransition}
-          initial={skipEnterAnimation ? false : routeTransition.initial}
-        >
+      <ErrorBoundary>
+        <div className="flex-grow flex flex-col">
           <Routes>
             {/* Public Pages */}
             <Route path="/" element={<Home />} />
@@ -180,8 +138,8 @@ function MainLayout() {
               </Route>
             </Route>
           </Routes>
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </ErrorBoundary>
       {!isDashboardRoute && !isAdminLoginRoute && <Footer />}
     </div>
   );
